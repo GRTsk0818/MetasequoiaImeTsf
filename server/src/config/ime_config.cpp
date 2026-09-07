@@ -628,7 +628,14 @@ bool LoadImeConfig()
         return false;
     try
     {
-        auto tbl = toml::parse_file(g_config_path.string());
+        // Read via the wide path and parse the text. toml::parse_file(g_config_path.string()) would run the
+        // path through the ANSI code page; on a non-ASCII (e.g. Chinese) config path that corrupts it, and on
+        // a code page that cannot represent the characters path::string() throws, crashing the process.
+        std::ifstream input(g_config_path, std::ios::binary);
+        if (!input)
+            return false;
+        const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        auto tbl = toml::parse(text);
 
         const int page_size = tbl["appearance"]["page_size"].value_or(6);
         g_candidate_page_size = page_size >= 3 && page_size <= 9 ? page_size : 6;
@@ -1072,12 +1079,14 @@ void MigrateLegacyVoiceInputConfig()
     if (!voice.asr_token.empty())
         return;
     const std::filesystem::path legacy_path =
-        std::filesystem::path(CommonUtils::get_local_appdata_path()) / "MetasequoiaVoiceInput" / "config.toml";
+        std::filesystem::path(CommonUtils::get_local_appdata_path_w()) / L"MetasequoiaVoiceInput" / L"config.toml";
     if (!std::filesystem::exists(legacy_path))
         return;
     try
     {
-        const toml::table legacy = toml::parse_file(legacy_path.string());
+        std::ifstream legacy_input(legacy_path, std::ios::binary);
+        const std::string legacy_text((std::istreambuf_iterator<char>(legacy_input)), std::istreambuf_iterator<char>());
+        const toml::table legacy = toml::parse(legacy_text);
         const std::string asr_token = legacy["asr_api"]["token"].value_or(std::string());
         if (asr_token.empty())
             return;
@@ -1217,7 +1226,10 @@ std::string MergeConfigIntoTemplate(const std::string &template_text, const std:
 
 void InitImeConfig()
 {
-    g_config_path = std::filesystem::path(CommonUtils::get_ime_data_path()) / "config.toml";
+    // Build the path from the wide accessor: std::filesystem::path(std::string) decodes with the
+    // system ANSI code page, which corrupts a non-ASCII (e.g. Chinese) user profile path on a
+    // non-UTF-8 ACP machine and makes every config read/write fail ("设置保存失败").
+    g_config_path = std::filesystem::path(CommonUtils::get_ime_data_path_w()) / L"config.toml";
     std::error_code create_error;
     std::filesystem::create_directories(g_config_path.parent_path(), create_error);
     SyncConfigWithInstalledTemplate();
