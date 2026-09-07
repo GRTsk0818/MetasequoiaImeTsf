@@ -512,6 +512,7 @@ jobs:
           SIGNING_ENABLED: ${{ steps.signing.outputs.signing_enabled }}
           PRODUCT_MANIFEST: installer/app_data/product-manifest.json
           RELEASE_TRIGGER: ${{ github.event_name }}
+          TARGET_SHA: ${{ needs.prepare.outputs.target_sha }}
         run: bash scripts/ci/publish-release.sh
 
       # msime.app/update.json is what the settings page's "检查更新" reads, and MSIME-Web only
@@ -524,6 +525,7 @@ jobs:
       # correct; what the failure means is that the website is now stale and someone has to act, so
       # it is reported as a failure rather than swallowed.
       - name: Refresh the download manifest on msime.app
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}

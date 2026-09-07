@@ -21,7 +21,7 @@ python scripts/product_lock.py validate
 
 ## 重建与追溯
 
-自动路径构建的是 release-please 刚刚建出的那个 draft，`resolve-auto-release.sh` 要求它钉在完整 commit SHA 上；手动 Release 只接受已有 draft tag，由 `validate-draft-release.sh` 做同样的校验。两条路径都只读该提交内的清单。变更词库需要新的源码提交和产品版本，不允许临时覆盖词库 tag。没有清单的历史版本不能用新流水线宣称可复现重建。
+自动路径构建的是 release-please 刚刚建出的那个 draft，`resolve-auto-release.sh` 要求它钉在完整 commit SHA 上；发布时自动路径把产物挂到同一提交的 `v<版本>-beta` Pre-release，稳定的 `v<版本>` draft 保留给人工挑选后发布。手动 Release 只接受已有稳定 draft tag，由 `validate-draft-release.sh` 做同样的校验。两条路径都只读该提交内的清单。变更词库需要新的源码提交和产品版本，不允许临时覆盖词库 tag。没有清单的历史版本不能用新流水线宣称可复现重建。
 
 ## 发布节奏
 

@@ -3,7 +3,7 @@
 #
 # FIRST_* comes from the invocation that recovers releases for pull requests already merged when the run started, which is the one that fires when a human merged the release pull request by hand instead of letting land-release-pr.sh do it. SECOND_* comes from the invocation after this run merged the pull request itself. On any given push at most one of them normally reports a release. The invocation between them only refreshes the pull request and creates no release, so it is not consulted here.
 #
-# When both do report one, the push carried a merged release pull request and further releasable commits at once. The second release is the newer version and supersedes the first, so it is the one that gets built; the first is left as a draft for a manual dispatch to pick up, which is the only case where the automatic path still leaves something behind.
+# When both do report one, the push carried a merged release pull request and further releasable commits at once. The second release is the newer version and supersedes the first, so it is the one that gets built; the first remains a stable draft for a manual dispatch to pick up. The selected release also remains a stable draft: publish-release.sh creates a separate beta prerelease for the automatic artifact.
 #
 # The manual path gets its immutability guarantees from validate-draft-release.sh. Nothing validates release-please's own outputs, so the same two invariants are checked here: the commit is a full SHA rather than a branch name, and the tag agrees with the version.
 #
