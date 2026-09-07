@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.2](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.1...v0.6.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* **ci:** align release matrix with selected vcpkg ([#244](https://github.com/metasequoiaime/MSIME-Windows/issues/244)) ([fbd6b39](https://github.com/metasequoiaime/MSIME-Windows/commit/fbd6b390f111e2ad390be494d3cca901b1b0c7e4))
+* **ci:** guard the release vcpkg selection ([#247](https://github.com/metasequoiaime/MSIME-Windows/issues/247)) ([d1ac527](https://github.com/metasequoiaime/MSIME-Windows/commit/d1ac5273e46ab9c2623d64b1ca2aff0551d7758b))
+* **installer:** test server before embedding uiAccess manifest ([#243](https://github.com/metasequoiaime/MSIME-Windows/issues/243)) ([f62e8e5](https://github.com/metasequoiaime/MSIME-Windows/commit/f62e8e5fc8c7e724e1fbbe95d33b76070c1a25f1))
+
 ## [0.6.1](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.0...v0.6.1) (2026-09-07)
 
 
