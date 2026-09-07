@@ -15,7 +15,7 @@ if [[ "$RELEASE_TRIGGER" == push ]]; then
     # Braces are required: bash takes the full-width bracket that follows as part of the name otherwise.
     title="${TAG_NAME}（自动构建）"
     banner='本版本由 CI 在合并到 `main` 后自动构建发布。'
-    channel=(--prerelease=false --latest)
+    channel=(--prerelease)
 else
     title="$TAG_NAME"
     banner=''
