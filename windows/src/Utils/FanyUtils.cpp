@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include "Define.h"
@@ -59,20 +61,23 @@ bool ParseTomlBool(const std::string &raw, bool fallback)
     return fallback;
 }
 
-std::string SharedConfigPath()
+std::filesystem::path SharedConfigPath()
 {
-    const char *localAppDataPath = std::getenv("LOCALAPPDATA");
+    // Build a wide path and open it as such. A narrow std::string path would be opened through the
+    // ANSI code page, which cannot round-trip a non-ASCII (e.g. Chinese) user profile path on a
+    // non-UTF-8 system, so the TSF would read the wrong file or fail to find the config.
+    const wchar_t *localAppDataPath = _wgetenv(L"LOCALAPPDATA");
     if (!localAppDataPath)
     {
         return {};
     }
-    return std::string(localAppDataPath) + "\\metasequoiaime\\config.toml";
+    return std::filesystem::path(localAppDataPath) / L"metasequoiaime" / L"config.toml";
 }
 } // namespace
 
 BOOL ReadConfiguredDefaultImeModeChinese()
 {
-    const std::string configPath = SharedConfigPath();
+    const std::filesystem::path configPath = SharedConfigPath();
     if (configPath.empty())
     {
         return TRUE;
@@ -125,7 +130,7 @@ BOOL ReadConfiguredDefaultImeModeChinese()
 
 int ReadConfiguredPunctuationLock()
 {
-    const std::string configPath = SharedConfigPath();
+    const std::filesystem::path configPath = SharedConfigPath();
     if (configPath.empty())
     {
         return Global::PunctuationLock::Follow;
@@ -191,7 +196,7 @@ void RefreshPunctuationLockFromConfig()
 
 BOOL ReadConfiguredJapaneseInputMode()
 {
-    const std::string configPath = SharedConfigPath();
+    const std::filesystem::path configPath = SharedConfigPath();
     if (configPath.empty())
     {
         return FALSE;
@@ -245,7 +250,7 @@ BOOL ReadConfiguredJapaneseInputMode()
 SwitchLanguageHotkeys ReadConfiguredSwitchLanguageHotkeys()
 {
     SwitchLanguageHotkeys result;
-    const std::string configPath = SharedConfigPath();
+    const std::filesystem::path configPath = SharedConfigPath();
     if (configPath.empty())
     {
         return result;
