@@ -198,6 +198,14 @@ jobs:
       # CMakePresets.json points at a developer machine's vcpkg, so the presets cannot be used
       # here. This mirrors what .github/workflows/ci.yml already does, into the build directory
       # layout that the installer's Prepare-PackageFiles.ps1 expects.
+      - name: Verify the selected vcpkg root
+        shell: pwsh
+        run: |
+          $expected = '${{ matrix.vcpkg_root }}'
+          if ($env:VCPKG_ROOT -ne $expected) {
+            throw "VCPKG_ROOT is '$env:VCPKG_ROOT'; expected '$expected' for ${{ matrix.name }} on runner '$env:RUNNER_NAME'"
+          }
+
       - name: Configure
         shell: pwsh
         run: >
