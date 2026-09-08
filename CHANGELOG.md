@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.5](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.4...v0.6.5) (2026-09-08)
+
+
+### Bug Fixes
+
+* **ci:** stop the pipe probe from handshaking with a leftover Server ([1c4643b](https://github.com/metasequoiaime/MSIME-Windows/commit/1c4643b0e4c16204421306d6e44e46f37f76fadc))
+* **ci:** stop the pipe probe from handshaking with a leftover Server ([f91dae7](https://github.com/metasequoiaime/MSIME-Windows/commit/f91dae76449ab7c75f265a9a2e8c36944a13d21d))
+
 ## [0.6.4](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.3...v0.6.4) (2026-09-08)
 
 
