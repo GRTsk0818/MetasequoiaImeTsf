@@ -511,9 +511,7 @@ void FloatingToolbarPresenter::RebuildScene()
             const std::string next = GetConfiguredCharacterSet() == "traditional" ? "simplified" : "traditional";
             if (SetConfiguredCharacterSet(next))
             {
-                FanyNamedPipe::EnqueueRefreshCandidatePageTask();
                 PostSettingsConfig();
-                FloatingToolbarPresenter::Instance().ApplyTheme();
             }
         });
     }

@@ -1,6 +1,28 @@
 #include "ipc/input_key_policy.h"
 #include "tests/includes/test_framework.h"
 
+TEST_CASE(word_to_character_uses_only_the_selected_unmodified_key_pair)
+{
+    using FanyImeIpc::WordToCharacterDirection;
+    REQUIRE_EQ(WordToCharacterDirection(0xDB, '[', 0, true, false), -1);
+    REQUIRE_EQ(WordToCharacterDirection(0xDD, ']', 0, true, false), 1);
+    REQUIRE_EQ(WordToCharacterDirection(0xBD, '-', 0, true, true), -1);
+    REQUIRE_EQ(WordToCharacterDirection(0xBB, '=', 0, true, true), 1);
+    REQUIRE_EQ(WordToCharacterDirection(0xDB, '[', 0, true, true), 0);
+    REQUIRE_EQ(WordToCharacterDirection(0xBD, '-', 0, true, false), 0);
+    REQUIRE_EQ(WordToCharacterDirection(0xBD, '-', 0, false, true), 0);
+    REQUIRE_EQ(WordToCharacterDirection(0xDB, '[', 0, false, false), 0);
+    // Unicode U+ entry and shifted punctuation must not select a character.
+    REQUIRE_EQ(WordToCharacterDirection(0xBB, '+', 1, true, true), 0);
+    REQUIRE_EQ(WordToCharacterDirection(0xBD, '_', 1, true, true), 0);
+    REQUIRE_EQ(WordToCharacterDirection(0xDB, '{', 1, true, false), 0);
+    for (unsigned modifiers = 1; modifiers < 8; ++modifiers)
+        REQUIRE_EQ(WordToCharacterDirection(0xBB, '=', modifiers, true, true), 0);
+    // Host-drawn candidates carry an unrelated UI-less flag.
+    REQUIRE_EQ(WordToCharacterDirection(0xBB, '=', FanyImeIpc::kModifierUiLess, true, true), 1);
+    REQUIRE_EQ(WordToCharacterDirection('A', '=', 0, true, true), 0);
+}
+
 TEST_CASE(shift_variants_are_backend_independent_composition_reset_keys)
 {
     REQUIRE(FanyImeIpc::IsBackendIndependentCompositionResetKey(0x10));

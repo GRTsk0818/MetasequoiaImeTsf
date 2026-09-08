@@ -20,6 +20,7 @@
 #include "ipc/candidate_text_policy.h"
 #include "ipc/focus_session_policy.h"
 #include "ipc/input_key_policy.h"
+#include "MetasequoiaImeEngine/contracts/ipc_negotiation.h"
 #include "defines/defines.h"
 #include "ipc.h"
 #include "defines/globals.h"
@@ -3565,6 +3566,13 @@ void HandleImeKey(uint64_t client_id, uint64_t activation_epoch, uint64_t reques
     // contract symmetric before any selection/composition predicates run.
     Global::Keycode = FanyImeIpc::NormalizeNumpadDigitKey(Global::Keycode);
 
+    if (FanyImeProtocol::IsCharacterSetShortcut(Global::Keycode, Global::ModifiersDown))
+    {
+        if (g_authoritative_cn_mode != 0 && GetConfiguredCharacterSetShortcutEnabled())
+            SetConfiguredCharacterSet(GetConfiguredCharacterSet() == "traditional" ? "simplified" : "traditional");
+        return;
+    }
+
     if (FanyImeIpc::IsEnglishModeToggleKey(Global::Keycode, Global::ModifiersDown))
     {
         SetEnglishInputMode(!g_english_input_mode);
@@ -3640,9 +3648,13 @@ void HandleImeKey(uint64_t client_id, uint64_t activation_epoch, uint64_t reques
     const bool is_manual_pinyin_separator = IsManualPinyinSeparatorKey(Global::Keycode, Global::Wch);
     const bool is_microsoft_shuangpin_ing_key =
         IsMicrosoftShuangpinIngKey(Global::Keycode, Global::Wch, input_before_key);
+    const int word_character_direction = FanyImeIpc::WordToCharacterDirection(
+        Global::Keycode, Global::Wch, Global::ModifiersDown, GetConfiguredWordToCharacterEnabled(),
+        GetConfiguredWordToCharacterKeys() == "minus_equal");
     const bool is_commit_with_highlighted_candidate_punctuation =
-        !is_manual_pinyin_separator && !is_microsoft_shuangpin_ing_key &&
-        IsCommitWithHighlightedCandidatePunctuationInCandidateMode(Global::Keycode, Global::Wch);
+        word_character_direction != 0 ||
+        (!is_manual_pinyin_separator && !is_microsoft_shuangpin_ing_key &&
+         IsCommitWithHighlightedCandidatePunctuationInCandidateMode(Global::Keycode, Global::Wch));
     const bool is_selection_key = IsSelectionKey(Global::Keycode);
     const bool is_unicode_shift_digit_selection =
         unicode_composition_active && shift_only && Global::Keycode >= '1' && Global::Keycode <= '9';
@@ -3669,14 +3681,11 @@ void HandleImeKey(uint64_t client_id, uint64_t activation_epoch, uint64_t reques
             auto &ui = Global::candidate_ui;
             ui.selected_text = FanyImeIpc::HighlightedCandidateText(ui.page_words, ui.selected_index_in_page);
 
-            const bool is_word_to_character_key = (Global::Wch == L'[' || Global::Wch == L']') &&
-                                                  GetConfiguredWordToCharacterEnabled() &&
-                                                  !GetConfiguredPagingBracketsEnabled();
             WordItem highlighted_item;
-            if (is_word_to_character_key && ResolveCandidateItem(ui.selected_index_in_page + 1, highlighted_item))
+            if (word_character_direction != 0 && ResolveCandidateItem(ui.selected_index_in_page + 1, highlighted_item))
             {
-                const auto edge =
-                    Global::Wch == L'[' ? FanyImeIpc::HanCharacterEdge::First : FanyImeIpc::HanCharacterEdge::Last;
+                const auto edge = word_character_direction < 0 ? FanyImeIpc::HanCharacterEdge::First
+                                                               : FanyImeIpc::HanCharacterEdge::Last;
                 const auto character =
                     FanyImeIpc::ExtractHanCharacter(CandidateTextForOutput(highlighted_item.word), edge);
                 if (character)

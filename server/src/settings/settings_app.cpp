@@ -316,6 +316,7 @@ std::wstring BuildConfigMessage(bool refresh_skin_catalog)
             {"shuangpin_schema", GetConfiguredShuangpinSchema()},
             {"wubi_schema", GetConfiguredWubiSchema()},
             {"word_to_character", GetConfiguredWordToCharacterEnabled()},
+            {"word_to_character_keys", GetConfiguredWordToCharacterKeys()},
             {"smart_punctuation", GetConfiguredSmartPunctuationEnabled()},
             {"smart_punctuation_repeat_to_chinese", GetConfiguredSmartPunctuationRepeatToChineseEnabled()},
             {"paired_punctuation", GetConfiguredPairedPunctuationEnabled()},
@@ -348,7 +349,8 @@ std::wstring BuildConfigMessage(bool refresh_skin_catalog)
           {"keybindings",
            {{"switch_language_shift", GetConfiguredSwitchLanguageShiftEnabled()},
             {"switch_language_ctrl", GetConfiguredSwitchLanguageCtrlEnabled()},
-            {"switch_language_ctrl_alt_space", GetConfiguredSwitchLanguageCtrlAltSpaceEnabled()}}},
+            {"switch_language_ctrl_alt_space", GetConfiguredSwitchLanguageCtrlAltSpaceEnabled()},
+            {"toggle_character_set_ctrl_shift_f", GetConfiguredCharacterSetShortcutEnabled()}}},
           {"frequency_adjustment",
            {{"mode", frequency.mode},
             {"trigger_count", frequency.trigger_count},
@@ -538,6 +540,8 @@ bool ApplyConfigUpdate(const json::object &data)
         return SetConfiguredWubiSchema(json::value_to<std::string>(data.at("value")));
     if (path == "input.word_to_character")
         return SetConfiguredWordToCharacterEnabled(json::value_to<bool>(data.at("value")));
+    if (path == "input.word_to_character_keys")
+        return SetConfiguredWordToCharacterKeys(json::value_to<std::string>(data.at("value")));
     if (path == "input.smart_punctuation")
         return SetConfiguredSmartPunctuationEnabled(json::value_to<bool>(data.at("value")));
     if (path == "input.smart_punctuation_repeat_to_chinese")
@@ -654,6 +658,8 @@ bool ApplyConfigUpdate(const json::object &data)
         return SetConfiguredSwitchLanguageCtrlEnabled(json::value_to<bool>(data.at("value")));
     if (path == "keybindings.switch_language_ctrl_alt_space")
         return SetConfiguredSwitchLanguageCtrlAltSpaceEnabled(json::value_to<bool>(data.at("value")));
+    if (path == "keybindings.toggle_character_set_ctrl_shift_f")
+        return SetConfiguredCharacterSetShortcutEnabled(json::value_to<bool>(data.at("value")));
     if (path.rfind("frequency_adjustment.", 0) == 0)
     {
         const std::string key = path.substr(21);

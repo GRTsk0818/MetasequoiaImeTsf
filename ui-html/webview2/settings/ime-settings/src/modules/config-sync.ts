@@ -94,6 +94,18 @@ function applyConfigData(data: Record<string, any>, target?: string): void {
   if (typeof data?.input?.word_to_character === 'boolean') {
     applyToggleState('wordToCharacterToggleBtn', data.input.word_to_character);
   }
+  for (const [keys, paging] of [
+    ['brackets', data?.general?.paging_brackets],
+    ['minus_equal', data?.general?.paging_minus_equal]
+  ] as const) {
+    if (target && target !== 'input') continue;
+    const radio = document.querySelector<HTMLInputElement>(`input[name="word-to-character-keys"][value="${keys}"]`);
+    if (!radio) continue;
+    if (typeof paging === 'boolean') radio.disabled = paging;
+    if (typeof data?.input?.word_to_character_keys === 'string') {
+      radio.checked = data.input.word_to_character_keys === keys;
+    }
+  }
   if (typeof data?.input?.smart_punctuation === 'boolean') {
     applyToggleState('smartPunctuationToggleBtn', data.input.smart_punctuation);
   }
@@ -108,7 +120,6 @@ function applyConfigData(data: Record<string, any>, target?: string): void {
   }
   if (data?.input?.punctuation_lock === 'chinese' || data?.input?.punctuation_lock === 'english' ||
       data?.input?.punctuation_lock === 'follow') {
-    applyToggleState('alwaysChinesePunctuationToggleBtn', data.input.punctuation_lock === 'chinese');
     applyToggleState('alwaysEnglishPunctuationToggleBtn', data.input.punctuation_lock === 'english');
   }
   if (typeof data?.general?.candidate_translations === 'boolean') {

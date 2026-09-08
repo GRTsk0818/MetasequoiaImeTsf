@@ -61,6 +61,14 @@
   border-radius: 8px;
 }
 
+.dropdown-item[aria-disabled="true"],
+.dropdown-item[aria-disabled="true"]:hover {
+  color: var(--text-secondary);
+  opacity: 0.45;
+  background: transparent;
+  cursor: not-allowed;
+}
+
 .dropdown-menu.open {
   display: block;
 }

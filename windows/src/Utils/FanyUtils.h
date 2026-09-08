@@ -27,6 +27,7 @@ struct SwitchLanguageHotkeys
     bool shift = true;
     bool ctrl = false;
     bool ctrl_alt_space = true;
+    bool character_set_ctrl_shift_f = true;
 };
 // Read keybindings.switch_language_* from shared config.toml.
 SwitchLanguageHotkeys ReadConfiguredSwitchLanguageHotkeys();

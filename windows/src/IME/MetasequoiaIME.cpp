@@ -2617,7 +2617,13 @@ LRESULT CALLBACK CMetasequoiaIME_WindowProc(HWND hWnd, UINT message, WPARAM wPar
             break;
         }
 
-        if (receivedData->msg_type == Global::DataFromServerMsgType::Normal)
+        if (receivedData->msg_type == Global::DataFromServerMsgType::CommitExactText)
+        {
+            pIME->_PostAsyncKeyRequest(WM_AsyncPunctuationCommit, code, wch, request.requestId,
+                                       receivedData->candidate_string, request.focusToken, request.compositionEpoch,
+                                       request.deferredReplayToken);
+        }
+        else if (receivedData->msg_type == Global::DataFromServerMsgType::Normal)
         {
             if (wch == 0)
             {

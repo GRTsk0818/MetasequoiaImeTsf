@@ -102,7 +102,7 @@ export function setupDropdownMenu(
   // Event delegation so dynamically rebuilt items (e.g. system fonts) keep working.
   menu.addEventListener('click', (event: Event) => {
     const item = (event.target as HTMLElement | null)?.closest('.dropdown-item') as HTMLElement | null;
-    if (!item || !menu.contains(item)) {
+    if (!item || !menu.contains(item) || item.getAttribute('aria-disabled') === 'true') {
       return;
     }
 

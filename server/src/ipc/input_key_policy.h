@@ -22,6 +22,17 @@ constexpr bool IsEnglishModeToggleKey(uint32_t keycode, uint32_t modifiers_down)
     return keycode == static_cast<uint32_t>('E') && (modifiers_down & kKeyModifierMask) == kEnglishModeToggleModifiers;
 }
 
+// Return -1 / +1 for the first / last Han character, or zero for an ordinary key.
+constexpr int WordToCharacterDirection(uint32_t keycode, uint32_t character, uint32_t modifiers, bool enabled,
+                                       bool minus_equal)
+{
+    if (!enabled || (modifiers & kKeyModifierMask) != 0)
+        return 0;
+    if (minus_equal)
+        return keycode == 0xBD && character == '-' ? -1 : keycode == 0xBB && character == '=' ? 1 : 0;
+    return keycode == 0xDB && character == '[' ? -1 : keycode == 0xDD && character == ']' ? 1 : 0;
+}
+
 // The TSF side treats numpad digits exactly like the corresponding candidate
 // digit. Canonicalize them at the Server boundary so every downstream policy
 // sees the same key code and, crucially, produces a reply for the request.

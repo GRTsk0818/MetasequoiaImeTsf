@@ -1,4 +1,19 @@
+.word-to-character-keys-row {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--divider-color);
+}
+
 /* 输入 -> 输入方案 */
+.word-to-character-key-options .radio-option {
+  padding: 8px 4px;
+}
+
+.word-to-character-key-options .radio-option:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .input-option-content {
   margin-top: 12px;
   display: flex;
