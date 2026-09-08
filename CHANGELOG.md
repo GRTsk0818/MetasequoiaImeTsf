@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.4](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.3...v0.6.4) (2026-09-08)
+
+
+### Bug Fixes
+
+* **server:** only grace-delay a candidate hide the worker delivered late ([bb53763](https://github.com/metasequoiaime/MSIME-Windows/commit/bb53763e663629ecb94211e6a2b2e369a5ebeea3))
+* **server:** stop candidate strobing when the worker queue backs up ([cc81f79](https://github.com/metasequoiaime/MSIME-Windows/commit/cc81f794bb8566d06411c18fb8d3a212a4d46d97))
+* stop candidate-window flicker and dropped commits when the machine is loaded ([a763580](https://github.com/metasequoiaime/MSIME-Windows/commit/a763580a0ce1bb106aa1808588d67006761114fb))
+* **tsf:** stop the candidate window flickering when the host lags ([58fa715](https://github.com/metasequoiaime/MSIME-Windows/commit/58fa71592122087d3b590efa32f51ccb30e58657))
+
+
+### Performance Improvements
+
+* **deps:** pick up the cached user-dictionary journal connection ([0bf0928](https://github.com/metasequoiaime/MSIME-Windows/commit/0bf0928fef636586c40aefbb4e08b374717620dd))
+* **server:** time each segment of the per-keystroke candidate build ([0e003fa](https://github.com/metasequoiaime/MSIME-Windows/commit/0e003fa0957e793b9d71e59a025a61cd4d245093))
+
 ## [0.6.3](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.2...v0.6.3) (2026-09-08)
 
 
