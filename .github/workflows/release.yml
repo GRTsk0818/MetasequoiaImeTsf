@@ -183,6 +183,14 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      # Some runner instances leave _work owned by SYSTEM while the job itself
+      # runs as `runner`. checkout still succeeds, so the first plain git call
+      # is what exits 128 on dubious ownership, minutes into the job.
+      - name: Trust the runner workspace
+        shell: pwsh
+        run: |
+          git config --global --add safe.directory ($env:GITHUB_WORKSPACE -replace '\\', '/')
+
       - name: Stamp the version resource
         shell: pwsh
         run: |
@@ -248,6 +256,14 @@ jobs:
           ref: ${{ needs.prepare.outputs.target_sha }}
           submodules: recursive
           persist-credentials: false
+
+      # Some runner instances leave _work owned by SYSTEM while the job itself
+      # runs as `runner`. checkout still succeeds, so the first plain git call
+      # is what exits 128 on dubious ownership, minutes into the job.
+      - name: Trust the runner workspace
+        shell: pwsh
+        run: |
+          git config --global --add safe.directory ($env:GITHUB_WORKSPACE -replace '\\', '/')
 
       - name: Install Boost
         shell: pwsh
@@ -373,6 +389,14 @@ jobs:
           ref: ${{ needs.prepare.outputs.target_sha }}
           submodules: true
           persist-credentials: false
+
+      # Some runner instances leave _work owned by SYSTEM while the job itself
+      # runs as `runner`. checkout still succeeds, so the first plain git call
+      # is what exits 128 on dubious ownership, minutes into the job.
+      - name: Trust the runner workspace
+        shell: pwsh
+        run: |
+          git config --global --add safe.directory ($env:GITHUB_WORKSPACE -replace '\\', '/')
 
       - name: Verify the release commit is on main
         shell: bash
