@@ -3,6 +3,33 @@
 #include "tests/includes/test_framework.h"
 #include <type_traits>
 
+TEST_CASE(shortcut_config_upgrade_preserves_word_selection_and_adds_defaults)
+{
+    const std::string old_config =
+        "[input]\nword_to_character = true\n\n[keybindings]\nswitch_language_shift = false\n";
+    const std::string new_template =
+        "[input]\nword_to_character = false\nword_to_character_keys = \"brackets\"\n\n"
+        "[keybindings]\nswitch_language_shift = true\ntoggle_character_set_ctrl_shift_f = true\n";
+    const auto merged = MergeConfigIntoTemplate(new_template, old_config, "");
+    REQUIRE(merged.find("word_to_character = true") != std::string::npos);
+    REQUIRE(merged.find("word_to_character_keys = \"brackets\"") != std::string::npos);
+    REQUIRE(merged.find("switch_language_shift = false") != std::string::npos);
+    REQUIRE(merged.find("toggle_character_set_ctrl_shift_f = true") != std::string::npos);
+}
+
+TEST_CASE(candidate_key_config_rejects_invalid_groups_without_changing_state)
+{
+    const auto keys = GetConfiguredWordToCharacterKeys();
+    const bool enabled = GetConfiguredWordToCharacterEnabled();
+    const bool brackets = GetConfiguredPagingBracketsEnabled();
+    const bool minus = GetConfiguredPagingMinusEqualEnabled();
+    REQUIRE(!SetConfiguredWordToCharacterKeys("unsupported"));
+    REQUIRE_EQ(GetConfiguredWordToCharacterKeys(), keys);
+    REQUIRE_EQ(GetConfiguredWordToCharacterEnabled(), enabled);
+    REQUIRE_EQ(GetConfiguredPagingBracketsEnabled(), brackets);
+    REQUIRE_EQ(GetConfiguredPagingMinusEqualEnabled(), minus);
+}
+
 TEST_CASE(config_merge_keeps_customized_values_and_adds_new_keys)
 {
     const std::string template_text = "[general]\n"

@@ -24,6 +24,7 @@ static thread_local FanyImeSharedMemoryData *sharedData = nullptr;
 static thread_local bool canUseSharedMemory = false;
 
 static thread_local HANDLE hPipe = nullptr;
+static thread_local uint32_t negotiatedServerCapabilities = 0;
 static thread_local HANDLE hFromServerPipe = nullptr;
 static thread_local HANDLE hToTsfWorkerThreadPipe = nullptr;
 
@@ -445,6 +446,7 @@ bool WaitForWorkerPipeReady(HANDLE hPipeHandle)
 
 bool WaitForProtocolReady(uint64_t requestId)
 {
+    negotiatedServerCapabilities = 0;
     const ULONGLONG deadline = GetTickCount64() + 250;
     while (GetTickCount64() < deadline)
     {
@@ -458,7 +460,12 @@ bool WaitForProtocolReady(uint64_t requestId)
         if (result != OverlappedReadResult::Completed || bytesRead != sizeof(reply) || !IsValidServerReply(reply))
             return false;
         if (FanyImeProtocol::IsNegotiationReply(reply.msg_type) && reply.request_id == requestId)
-            return FanyImeProtocol::AcceptReply(reply, requestId);
+        {
+            const bool accepted = FanyImeProtocol::AcceptReply(reply, requestId);
+            if (accepted)
+                negotiatedServerCapabilities = FanyImeProtocol::ReplyCapabilities(reply);
+            return accepted;
+        }
         CachePendingReply(reply);
     }
     return false;
@@ -469,7 +476,9 @@ bool WritePipeHello(HANDLE hPipeHandle, UINT pipeRole)
     DWORD bytesWritten = 0;
     if (pipeRole == FanyImePipeRole::Main)
     {
-        const auto hello = FanyImeProtocol::Hello(GetPipeClientId(), NextProtocolId(nextRequestId));
+        const auto hello =
+            FanyImeProtocol::Hello(GetPipeClientId(), NextProtocolId(nextRequestId),
+                                   FanyImeProtocol::Capabilities | FanyImeProtocol::CharacterSetShortcut);
         BOOL ret = WriteFile(hPipeHandle, &hello, sizeof(hello), &bytesWritten, NULL);
         // Never authorize keys from merely writing a hello. An old Server
         // without negotiation times out into the existing raw-input fallback.
@@ -895,6 +904,7 @@ int CloseIpc()
 
 int CloseNamedpipe()
 {
+    negotiatedServerCapabilities = 0;
     ClosePipeHandleIfValid(hPipe);
     ClosePipeHandleIfValid(hFromServerPipe);
     ClosePipeHandleIfValid(hToTsfWorkerThreadPipe);
@@ -906,6 +916,12 @@ void ResetNamedpipeReplyState()
 {
     pendingReplies.clear();
     unsolicitedReplies.clear();
+}
+
+bool SupportsCharacterSetShortcut()
+{
+    return hPipe && hPipe != INVALID_HANDLE_VALUE &&
+           (negotiatedServerCapabilities & FanyImeProtocol::CharacterSetShortcut) != 0;
 }
 
 HANDLE GetToTsfWorkerThreadNamedpipe()

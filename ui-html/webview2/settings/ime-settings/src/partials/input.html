@@ -235,10 +235,18 @@
     <div class="section-header">
       <div>
         <div class="section-title">以词定字</div>
-        <div class="input-setting-description">开启后，按 [ 上屏高亮候选的首个汉字，按 ] 上屏末个汉字；与翻页方式中的 [ / ] 互斥</div>
+        <div class="input-setting-description">开启后，按所选键组的左键上屏高亮候选的首个汉字，右键上屏末个汉字</div>
       </div>
       <div class="ftb-toggle-btn" id="wordToCharacterToggleBtn" role="switch" aria-checked="false" tabindex="0">
         <div class="ftb-toggle-knob"></div>
+      </div>
+    </div>
+    <div class="word-to-character-keys-row">
+      <div class="section-title">以词定字快捷键</div>
+      <div class="content-page-option word-to-character-key-options" role="radiogroup" aria-label="以词定字快捷键">
+        <label class="radio-option"><input type="radio" name="word-to-character-keys" value="brackets" checked><span>[ / ]</span></label>
+        <div class="input-option-divider"></div>
+        <label class="radio-option"><input type="radio" name="word-to-character-keys" value="minus_equal" disabled><span>- / =</span></label>
       </div>
     </div>
   </div>
@@ -246,18 +254,8 @@
   <div class="section punctuation-lock-section">
     <div class="section-header">
       <div>
-        <div class="section-title">始终使用中文标点</div>
-        <div class="input-setting-description">切换中英文时仍使用中文标点，与下方选项互斥</div>
-      </div>
-      <div class="ftb-toggle-btn" id="alwaysChinesePunctuationToggleBtn" role="switch" aria-checked="false" tabindex="0">
-        <div class="ftb-toggle-knob"></div>
-      </div>
-    </div>
-    <div class="input-option-divider"></div>
-    <div class="section-header">
-      <div>
         <div class="section-title">始终使用英文标点</div>
-        <div class="input-setting-description">切换中英文时仍使用英文标点，与上方选项互斥</div>
+        <div class="input-setting-description">切换中英文时仍使用英文标点</div>
       </div>
       <div class="ftb-toggle-btn" id="alwaysEnglishPunctuationToggleBtn" role="switch" aria-checked="false" tabindex="0">
         <div class="ftb-toggle-knob"></div>

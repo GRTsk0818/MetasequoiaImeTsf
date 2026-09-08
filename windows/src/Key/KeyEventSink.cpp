@@ -14,6 +14,7 @@
 #include "FanyLog.h"
 #include "../Utils/PerfTimer.h"
 #include <chrono>
+#include "../../../vendor/MetasequoiaImeEngine/contracts/ipc_negotiation.h"
 
 // 0xF003, 0xF004 are the keys that the touch keyboard sends for next/previous
 #define THIRDPARTY_NEXTPAGE static_cast<WORD>(0xF003)
@@ -211,6 +212,13 @@ bool IsEnglishInputModeToggle(UINT code, UINT modifiers)
 {
     // Ctrl+Shift+E, without Alt.
     return code == 'E' && (modifiers & 0b00000111u) == 0b00000011u;
+}
+
+bool IsCharacterSetInputModeToggle(UINT code, UINT modifiers)
+{
+    return FanyImeProtocol::IsCharacterSetShortcut(code, modifiers) && (GetAsyncKeyState(VK_LWIN) & 0x8000) == 0 &&
+           (GetAsyncKeyState(VK_RWIN) & 0x8000) == 0 && SupportsCharacterSetShortcut() &&
+           FanyUtils::ReadConfiguredSwitchLanguageHotkeys().character_set_ctrl_shift_f;
 }
 
 void PostOwnerMessageWithSyncFallback(HWND window, UINT message, WPARAM wParam = 0, LPARAM lParam = 0)
@@ -677,6 +685,15 @@ BOOL CMetasequoiaIME::_IsKeyEaten(         //
     if (isOpen) // Chinese mode
     {
         const UINT shortcutModifiers = CaptureIpcModifiers();
+        if (!_serverUnavailableFallbackActive && IsCharacterSetInputModeToggle(*pCodeOut, shortcutModifiers))
+        {
+            if (pKeyState)
+            {
+                pKeyState->Category = CATEGORY_COMPOSING;
+                pKeyState->Function = FUNCTION_TOGGLE_CHARACTER_SET;
+            }
+            return TRUE;
+        }
         // Keep the Chinese compartment open: this only toggles the
         // Server-owned English candidate sub-mode.
         if (IsEnglishInputModeToggle(*pCodeOut, shortcutModifiers))
@@ -1126,6 +1143,13 @@ bool CMetasequoiaIME::_ClassifyDeferredKeyDown(_In_ ITfContext *pContext, WPARAM
     const bool projectedImeOpen = _deferredKeyProjectionValid
                                       ? _deferredProjectedImeOpen
                                       : _pCompositionProcessorEngine->GetIMEMode(_pThreadMgr, _tfClientId) != FALSE;
+    if (projectedImeOpen && !_serverUnavailableFallbackActive && !_IsKeyboardDisabled() &&
+        IsCharacterSetInputModeToggle(*classifiedCode, capturedModifiers))
+    {
+        keyState->Category = CATEGORY_COMPOSING;
+        keyState->Function = FUNCTION_TOGGLE_CHARACTER_SET;
+        return true;
+    }
     if (projectedImeOpen && IsEnglishInputModeToggle(*classifiedCode, capturedModifiers))
     {
         keyState->Category = CATEGORY_COMPOSING;
@@ -1403,6 +1427,9 @@ STDAPI CMetasequoiaIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARA
 bool CMetasequoiaIME::_QueueDeferredKeyDown(_In_ ITfContext *pContext, WPARAM wParam, LPARAM lParam,
                                             WCHAR translatedWch, UINT modifiersDown, const _KEYSTROKE_STATE &keyState)
 {
+    // Repeats are owned but do not enqueue another global configuration toggle.
+    if (keyState.Function == FUNCTION_TOGGLE_CHARACTER_SET && (lParam & 0x40000000) != 0)
+        return true;
     if (pContext == nullptr || !_DeferredKeyQueueHasCapacity())
     {
         return false;
@@ -1815,6 +1842,11 @@ void CMetasequoiaIME::_DrainOneDeferredKeyDown()
     if (_serverUnavailableFallbackActive)
     {
         _KEYSTROKE_STATE offlineState = key.keyState;
+        if (offlineState.Function == FUNCTION_TOGGLE_CHARACTER_SET)
+        {
+            _CompleteDeferredKeyReplay(replayToken);
+            return;
+        }
         offlineState.Category = CATEGORY_COMPOSING;
         switch (offlineState.Function)
         {
@@ -2102,6 +2134,13 @@ CMetasequoiaIME::KeyDownDispatchResult CMetasequoiaIME::_DispatchKeyDown(
             return KeyDownDispatchResult::Complete;
         }
 
+        if (KeystrokeState.Function == FUNCTION_TOGGLE_CHARACTER_SET && !SupportsCharacterSetShortcut())
+        {
+            // The transport may have been replaced by an older Server after
+            // TestKeyDown owned this key. Do not send it as ordinary input.
+            return KeyDownDispatchResult::Complete;
+        }
+
         Global::Keycode = code;
         Global::wch = wch;
         Global::ModifiersDown = capturedModifiers;
@@ -2111,6 +2150,12 @@ CMetasequoiaIME::KeyDownDispatchResult CMetasequoiaIME::_DispatchKeyDown(
 
         PerfTimer sendKeyEventTimer;
         const KeyEventSendResult sendResult = SendKeyEventToUIProcess(&requestId);
+        if (KeystrokeState.Function == FUNCTION_TOGGLE_CHARACTER_SET)
+        {
+            // No document edit or response is needed. In particular, an ambiguous
+            // delivery must never replay a toggle after reconnecting.
+            return KeyDownDispatchResult::Complete;
+        }
         DebugTsfKeyLatency(L"main-pipe-send", requestId, sendKeyEventTimer.ElapsedMs(),
                            sendResult == KeyEventSendResult::Sent ? S_OK : E_FAIL);
         DebugTsfIssue47(sendResult == KeyEventSendResult::Sent ? L"keydown-sent" : L"keydown-send-failed", requestId,

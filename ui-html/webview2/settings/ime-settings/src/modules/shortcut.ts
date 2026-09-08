@@ -4,6 +4,7 @@ export function applyShortcutConfig(config: {
   switch_language_shift?: boolean;
   switch_language_ctrl?: boolean;
   switch_language_ctrl_alt_space?: boolean;
+  toggle_character_set_ctrl_shift_f?: boolean;
 } | undefined): void {
   if (!config) {
     return;
@@ -11,6 +12,10 @@ export function applyShortcutConfig(config: {
   const shift = document.getElementById('switchLanguageShiftCheckbox') as HTMLInputElement | null;
   const ctrl = document.getElementById('switchLanguageCtrlCheckbox') as HTMLInputElement | null;
   const ctrlAltSpace = document.getElementById('switchLanguageCtrlAltSpaceCheckbox') as HTMLInputElement | null;
+  const characterSet = document.getElementById('characterSetShortcutCheckbox') as HTMLInputElement | null;
+  if (characterSet && typeof config.toggle_character_set_ctrl_shift_f === 'boolean') {
+    characterSet.checked = config.toggle_character_set_ctrl_shift_f;
+  }
   if (shift && typeof config.switch_language_shift === 'boolean') {
     shift.checked = config.switch_language_shift;
   }
@@ -23,6 +28,10 @@ export function applyShortcutConfig(config: {
 }
 
 export function setupShortcut(): void {
+  const characterSet = document.getElementById('characterSetShortcutCheckbox') as HTMLInputElement | null;
+  characterSet?.addEventListener('change', () => {
+    updateConfig('keybindings.toggle_character_set_ctrl_shift_f', characterSet.checked);
+  });
   const mapping: Record<string, string> = {
     shift: 'keybindings.switch_language_shift',
     ctrl: 'keybindings.switch_language_ctrl',

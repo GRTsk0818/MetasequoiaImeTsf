@@ -3707,8 +3707,6 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                                 const std::string value = json::value_to<std::string>(data.at("value"));
                                 if (SetConfiguredCharacterSet(value))
                                 {
-                                    UpdateFtbCharacterSetState(::webviewFtbWnd);
-                                    FanyNamedPipe::EnqueueRefreshCandidatePageTask();
                                     PostSettingsConfig();
                                 }
                             }
@@ -3968,10 +3966,13 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                             else if (path == "input.word_to_character")
                             {
                                 const bool value = json::value_to<bool>(data.at("value"));
-                                if (SetConfiguredWordToCharacterEnabled(value))
-                                {
-                                    PostSettingsConfig();
-                                }
+                                SetConfiguredWordToCharacterEnabled(value);
+                                PostSettingsConfig();
+                            }
+                            else if (path == "input.word_to_character_keys")
+                            {
+                                SetConfiguredWordToCharacterKeys(json::value_to<std::string>(data.at("value")));
+                                PostSettingsConfig();
                             }
                             else if (path == "input.smart_punctuation")
                             {
@@ -4219,10 +4220,8 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                             else if (path == "general.paging_minus_equal")
                             {
                                 const bool value = json::value_to<bool>(data.at("value"));
-                                if (SetConfiguredPagingMinusEqualEnabled(value))
-                                {
-                                    PostSettingsConfig();
-                                }
+                                SetConfiguredPagingMinusEqualEnabled(value);
+                                PostSettingsConfig();
                             }
                             else if (path == "general.paging_tab")
                             {
@@ -4246,10 +4245,8 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                             else if (path == "general.paging_brackets")
                             {
                                 const bool value = json::value_to<bool>(data.at("value"));
-                                if (SetConfiguredPagingBracketsEnabled(value))
-                                {
-                                    PostSettingsConfig();
-                                }
+                                SetConfiguredPagingBracketsEnabled(value);
+                                PostSettingsConfig();
                             }
                             else if (path == "general.paging_page_up_down")
                             {
@@ -4266,6 +4263,11 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                                 {
                                     PostSettingsConfig();
                                 }
+                            }
+                            else if (path == "keybindings.toggle_character_set_ctrl_shift_f")
+                            {
+                                SetConfiguredCharacterSetShortcutEnabled(json::value_to<bool>(data.at("value")));
+                                PostSettingsConfig();
                             }
                             else if (path == "keybindings.switch_language_shift")
                             {
@@ -4470,6 +4472,7 @@ void PostSettingsConfig()
             {"shuangpin_schema", GetConfiguredShuangpinSchema()},
             {"wubi_schema", GetConfiguredWubiSchema()},
             {"word_to_character", GetConfiguredWordToCharacterEnabled()},
+            {"word_to_character_keys", GetConfiguredWordToCharacterKeys()},
             {"smart_punctuation", GetConfiguredSmartPunctuationEnabled()},
             {"smart_punctuation_repeat_to_chinese", GetConfiguredSmartPunctuationRepeatToChineseEnabled()},
             {"paired_punctuation", GetConfiguredPairedPunctuationEnabled()},
@@ -4502,7 +4505,8 @@ void PostSettingsConfig()
           {"keybindings",
            {{"switch_language_shift", GetConfiguredSwitchLanguageShiftEnabled()},
             {"switch_language_ctrl", GetConfiguredSwitchLanguageCtrlEnabled()},
-            {"switch_language_ctrl_alt_space", GetConfiguredSwitchLanguageCtrlAltSpaceEnabled()}}},
+            {"switch_language_ctrl_alt_space", GetConfiguredSwitchLanguageCtrlAltSpaceEnabled()},
+            {"toggle_character_set_ctrl_shift_f", GetConfiguredCharacterSetShortcutEnabled()}}},
           {"tencent_tmt",
            {{"secret_id", tencent_tmt.secret_id},
             {"secret_key", tencent_tmt.secret_key},
@@ -4853,8 +4857,6 @@ HRESULT OnControllerCreatedFtbWnd(      //
                             GetConfiguredCharacterSet() == "traditional" ? "simplified" : "traditional";
                         if (SetConfiguredCharacterSet(next))
                         {
-                            RenderFloatingToolbarState(sender);
-                            FanyNamedPipe::EnqueueRefreshCandidatePageTask();
                             PostSettingsConfig();
                         }
                     }

@@ -142,6 +142,8 @@ default_ime_mode = "chinese"
 ime_mode_scope = "app"
 # 以词定字：开启后，[ 上屏高亮候选的首个汉字，] 上屏末个汉字
 word_to_character = false
+# brackets: [ / ]; minus_equal: - / =. Mutually exclusive with paging on the same keys.
+word_to_character_keys = "brackets"
 # 智能标点：中文标点模式下，字母/数字后的 , . : 输出英文标点（类似小狼毫 digit_separators）
 smart_punctuation = true
 # 重复标点转中文：智能标点输出英文标点后，2 秒内再次输入同一标点时替换为中文标点
@@ -213,6 +215,8 @@ autocorrect = true
 switch_language_shift = true
 switch_language_ctrl = false
 switch_language_ctrl_alt_space = true
+# Only active in Chinese mode.
+toggle_character_set_ctrl_shift_f = true
 
 #
 # Dictionary

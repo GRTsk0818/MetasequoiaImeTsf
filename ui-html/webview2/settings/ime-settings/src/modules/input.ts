@@ -197,26 +197,15 @@ export function setupInput(): void {
   setupPageOptions();
   setupFrequencyOptions();
   setupToggleButton('wordToCharacterToggleBtn', (active) => {
-    if (active) {
-      const pagingBrackets = document.getElementById('pagingBracketsCheckbox') as HTMLInputElement | null;
-      if (pagingBrackets?.checked) {
-        pagingBrackets.checked = false;
-        updateConfig('general.paging_brackets', false);
-      }
-    }
     updateConfig('input.word_to_character', active);
   });
-  setupToggleButton('alwaysChinesePunctuationToggleBtn', (active) => {
-    if (active) {
-      applyToggleState('alwaysEnglishPunctuationToggleBtn', false);
-      updateConfig('input.punctuation_lock', 'chinese');
-    } else {
-      updateConfig('input.punctuation_lock', 'follow');
-    }
+  document.querySelectorAll<HTMLInputElement>('input[name="word-to-character-keys"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (radio.checked && !radio.disabled) updateConfig('input.word_to_character_keys', radio.value);
+    });
   });
   setupToggleButton('alwaysEnglishPunctuationToggleBtn', (active) => {
     if (active) {
-      applyToggleState('alwaysChinesePunctuationToggleBtn', false);
       updateConfig('input.punctuation_lock', 'english');
     } else {
       updateConfig('input.punctuation_lock', 'follow');
@@ -310,10 +299,6 @@ function setupPageOptions(): void {
       };
       const path = configPaths[checkbox.value];
       if (path) updateConfig(path, checkbox.checked);
-      if (checkbox.value === 'brackets' && checkbox.checked) {
-        applyToggleState('wordToCharacterToggleBtn', false);
-        updateConfig('input.word_to_character', false);
-      }
     });
   });
 }

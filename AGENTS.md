@@ -79,7 +79,7 @@ cmake -S ui      -B ui/build -A x64                # GUI 框架
 
 | 频道 | 触发 | 发布状态 | 标题 |
 |---|---|---|---|
-| 自动构建 | push | `--prerelease` | `v<版本>（自动构建）`，说明里带提示 |
+| 自动构建 | push | `--prerelease` | `v<版本>-beta（自动构建）`，说明里带提示；稳定 tag 保留为 draft |
 | 发布 | `workflow_dispatch` | `--prerelease=false --latest` | `v<版本>` |
 
 GitHub 没有自定义频道，只有 Latest / Pre-release / Draft 三种状态，所以这里用 `prerelease` 标志承载「自动、未经挑选」，而不是承载「内测」。产品仍在内测这件事写在 release 说明和 [docs/installation.md](docs/installation.md) 里——那才是该做稳定性声明的地方，而这个标志同时还得用来分隔频道，兼不了两份职责。

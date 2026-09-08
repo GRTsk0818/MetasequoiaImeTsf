@@ -45,6 +45,7 @@ set(TEST_SOURCE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_terminal_deactivation_policy.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_user_dictionary_journal.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_config_template_merge.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/test_config_non_ascii_path.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_system_font_family.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_dictionary_validation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_skin_css_policy.cpp"
