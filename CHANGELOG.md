@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.6](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.5...v0.6.6) (2026-09-08)
+
+
+### Bug Fixes
+
+* **ci:** unblock packaging on the self-hosted runners ([7e9f0cd](https://github.com/metasequoiaime/MSIME-Windows/commit/7e9f0cd8927edece437f26408c62ae4eb5be2e44))
+* **ci:** unblock packaging on the self-hosted runners ([2868936](https://github.com/metasequoiaime/MSIME-Windows/commit/28689361add8f510d1f2103cafe74957e88fc02e))
+
 ## [0.6.5](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.4...v0.6.5) (2026-09-08)
 
 
