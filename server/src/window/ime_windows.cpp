@@ -2335,10 +2335,12 @@ LRESULT CALLBACK WndProcCandWindow(HWND hwnd, UINT message, WPARAM wParam, LPARA
 
     if (message == WM_HIDE_MAIN_WINDOW || (message == WM_TIMER && wParam == TIMER_ID_CANDIDATE_HIDE_GRACE))
     {
-        if (message == WM_HIDE_MAIN_WINDOW)
+        // wParam != 0 marks a hide the worker delivered late, i.e. one that may
+        // already be superseded by keystrokes queued behind it. Only those get the
+        // grace; a hide arriving on time is a real commit or focus loss and is
+        // applied straight away so typing keeps its snap.
+        if (message == WM_HIDE_MAIN_WINDOW && wParam != 0)
         {
-            // Arm the grace instead of hiding now. A show inside the window cancels
-            // this; only the timer firing means the composition really is over.
             // Repeat hides while one is already armed need no extra work — that is
             // where the redundant back-to-back hides get absorbed.
             if (!g_candidate_hide_pending)

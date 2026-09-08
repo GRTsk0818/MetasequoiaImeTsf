@@ -201,6 +201,12 @@ void ApplyUiLessFromPacket(const FanyImeNamedpipeData &pipe_data)
     }
 }
 
+// A task that waited at least this long was delivered behind a stalled worker,
+// so the state it describes may already be superseded. Normal typing never gets
+// near it: queue waits stay under a few milliseconds unless something blocks the
+// task thread.
+constexpr ULONGLONG kCandidateHideBacklogMs = 24;
+
 void RequestShowCandidateWindow()
 {
     if (IsUiLessMode() || !::global_hwnd)
@@ -1520,9 +1526,16 @@ void WorkerThread()
 
         case TaskType::HideCandidate: {
             ::ReadDataFromNamedPipe(0b100000);
-            CAND_DIAG_LOGF(L"task HideCandidate client={} epoch={} request={}", task.client_id, task.activation_epoch,
-                           task.pipe_data.request_id);
-            PostMessage(::global_hwnd, WM_HIDE_MAIN_WINDOW, 0, 0);
+            const ULONGLONG queue_elapsed_ms = task.enqueued_at_ms == 0 ? 0 : GetTickCount64() - task.enqueued_at_ms;
+            CAND_DIAG_LOGF(L"task HideCandidate client={} epoch={} request={} queued_ms={}", task.client_id,
+                           task.activation_epoch, task.pipe_data.request_id, queue_elapsed_ms);
+            // Only a hide this thread delivered late can belong to a keystroke the
+            // user has already typed past — that is the one worth holding briefly,
+            // because a show for a later keystroke is right behind it. A hide
+            // delivered on time is a real commit or focus loss and must take effect
+            // now; delaying it leaves the candidate window hanging after the word is
+            // already on screen, which is exactly the snap that typing loses.
+            PostMessage(::global_hwnd, WM_HIDE_MAIN_WINDOW, queue_elapsed_ms >= kCandidateHideBacklogMs ? 1 : 0, 0);
             /* 清理状态 */
             ClearState();
             break;
