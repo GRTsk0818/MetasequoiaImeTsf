@@ -26,6 +26,7 @@ constexpr float kPanelScale = 2.0f / 3.0f;
 constexpr float kHeaderHeight = 58.0f;
 constexpr float kNavTop = 66.0f;
 constexpr float kNavHeight = 58.0f;
+constexpr float kNavTitleFontSize = 24.0f;
 constexpr float kSearchTop = 142.0f;
 constexpr float kSearchHeight = 52.0f;
 constexpr float kContentTop = 218.0f;
@@ -48,7 +49,6 @@ constexpr UINT_PTR kClipboardPollTimerId = 44;
 constexpr UINT kClipboardPollMs = 400;
 constexpr float kClipboardRowHeight = 80.0f;
 constexpr float kClipboardRowGap = 8.0f;
-constexpr float kClipboardTitleFontSize = 24.0f;
 constexpr float kClipboardHintFontSize = 24.0f;
 constexpr float kClipboardButtonFontSize = 22.0f;
 constexpr float kClipboardItemFontSize = 22.0f;
@@ -2235,21 +2235,21 @@ void EmojiPanel::Render(DeviceResources &resources)
         }
         else
         {
+            // Keep these in step with the tab labels in emoji_panel_icons.cpp,
+            // which the tabs fall back to when no icon font has the glyph.
             const wchar_t *title = L"";
             if (page_ == Page::Sticker)
-                title = L"Sticker";
+                title = L"贴纸";
             else if (page_ == Page::Gif)
                 title = L"GIF";
             else if (page_ == Page::Kaomoji)
-                title = L"Kaomoji";
+                title = L"颜文字";
             else if (page_ == Page::Symbols)
-                title = L"Symbols";
+                title = L"符号";
             else if (page_ == Page::Clipboard)
                 title = L"剪贴板";
-            DrawText(resources, title, {bounds_.x + 70.0f, bounds_.y + kNavTop, 280.0f, kNavHeight},
-                     page_ == Page::Clipboard ? kClipboardTitleFontSize : 18.0f, text,
-                     page_ == Page::Clipboard ? CjkUiFont() : L"Segoe UI", DWRITE_TEXT_ALIGNMENT_LEADING,
-                     DWRITE_FONT_WEIGHT_SEMI_BOLD);
+            DrawText(resources, title, {bounds_.x + 70.0f, bounds_.y + kNavTop, 280.0f, kNavHeight}, kNavTitleFontSize,
+                     text, CjkUiFont(), DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD);
         }
     }
     else
