@@ -40,6 +40,7 @@
 #include <fstream>
 #include <functional>
 #include <optional>
+#include <sstream>
 #include <vector>
 
 // WebView diagnostics were useful while fixing the rendering issues, but they
@@ -1357,19 +1358,12 @@ bool GetCandidateWebviewState(bool &isVisible, RECT &bounds)
 
 std::wstring ReadHtmlFile(const std::wstring &filePath)
 {
-    std::wifstream file(filePath);
+    std::ifstream file(filePath, std::ios::binary);
     if (!file)
-    {
-        (void)0;
         return L"";
-    }
-    // Use Boost Locale to handle UTF-8
-    file.imbue(boost::locale::generator().generate("en_US.UTF-8"));
-    std::wstringstream buffer;
+    std::ostringstream buffer;
     buffer << file.rdbuf();
-    std::wstring content = buffer.str();
-    (void)0;
-    return content;
+    return string_to_wstring(buffer.str());
 }
 
 std::wstring GetAppdataPath()

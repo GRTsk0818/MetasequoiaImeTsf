@@ -493,30 +493,31 @@ void PostConfig(bool refresh_skin_catalog = false)
     g_worker->Submit([refresh_skin_catalog] { return ConfigCompletion(refresh_skin_catalog); });
 }
 
-void PostWindowState(HWND hwnd)
+void PostValidatedServerMessage(json::object payload)
 {
     if (!g_webview)
         return;
-    nlohmann::json payload = {{"type", "windowState"}, {"data", {{"isMaximized", IsZoomed(hwnd) != FALSE}}}};
     payload["protocolVersion"] = metasequoia::webview::Version;
-    const std::string serialized = payload.dump();
-    if (!metasequoia::webview::Validate(json::parse(serialized), "server"))
+    if (!metasequoia::webview::Validate(payload, "server"))
         return;
-    const std::wstring message = string_to_wstring(serialized);
+    const std::wstring message = string_to_wstring(json::serialize(payload));
     g_webview->PostWebMessageAsJson(message.c_str());
+}
+
+void PostWindowState(HWND hwnd)
+{
+    PostValidatedServerMessage({
+        {"type", "windowState"},
+        {"data", {{"isMaximized", IsZoomed(hwnd) != FALSE}}},
+    });
 }
 
 void PostMaximizeButtonEvent(const char *event_name)
 {
-    if (!g_webview)
-        return;
-    nlohmann::json payload = {{"type", "maxButtonEvent"}, {"data", {{"event", event_name}}}};
-    payload["protocolVersion"] = metasequoia::webview::Version;
-    const std::string serialized = payload.dump();
-    if (!metasequoia::webview::Validate(json::parse(serialized), "server"))
-        return;
-    const std::wstring message = string_to_wstring(serialized);
-    g_webview->PostWebMessageAsJson(message.c_str());
+    PostValidatedServerMessage({
+        {"type", "maxButtonEvent"},
+        {"data", {{"event", event_name}}},
+    });
 }
 
 bool ApplyConfigUpdate(const json::object &data)
@@ -1282,7 +1283,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM w_param, LPARAM l_pa
                 g_webview3->Resume();
             if (g_controller)
                 g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-            PostConfig();
         }
         break;
     }
