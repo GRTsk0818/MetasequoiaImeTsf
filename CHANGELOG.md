@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.3](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.2...v0.6.3) (2026-09-08)
+
+
+### Bug Fixes
+
+* **config:** handle non-ASCII (e.g. Chinese) user profile paths ([0ef8b70](https://github.com/metasequoiaime/MSIME-Windows/commit/0ef8b70e9b0d69fe649ac348500216f54171f1c5))
+* **config:** handle non-ASCII (e.g. Chinese) user profile paths ([de4d3ac](https://github.com/metasequoiaime/MSIME-Windows/commit/de4d3acf453d2efe0ad1463ed1744c475e6180a9))
+* **emoji-panel:** use Chinese nav titles to match the tab labels ([4b3da57](https://github.com/metasequoiaime/MSIME-Windows/commit/4b3da57134625d3c472d597cb903e373a6dc4d65))
+* **release:** use beta tags for automatic builds ([#252](https://github.com/metasequoiaime/MSIME-Windows/issues/252)) ([2fb4560](https://github.com/metasequoiaime/MSIME-Windows/commit/2fb4560d994043219f4702dbcacce1d34be87020))
+* **scripts:** keep automatic releases as prereleases ([560b730](https://github.com/metasequoiaime/MSIME-Windows/commit/560b730ea1e1d27e7e767df5ccae515e9e4fa86d))
+* **scripts:** keep automatic releases as prereleases ([b777008](https://github.com/metasequoiaime/MSIME-Windows/commit/b777008abb15773ae4dc7ab27cdc0e90c4432e30))
+* **server:** fall back to text when the icon font lacks the glyph ([880c04f](https://github.com/metasequoiaime/MSIME-Windows/commit/880c04f6bbda0d03c0c37652c18b8ceefb757297))
+* **server:** fall back to text when the icon font lacks the glyph ([4355546](https://github.com/metasequoiaime/MSIME-Windows/commit/43555460dbb8289e3ec05236d0cb4dafcd79da39))
+* **ui:** make the icon font resolver recover from DirectWrite failures ([43576b7](https://github.com/metasequoiaime/MSIME-Windows/commit/43576b75cac8d9b645a6f8cee252896a7063704c))
+
 ## [0.6.2](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.1...v0.6.2) (2026-09-07)
 
 
