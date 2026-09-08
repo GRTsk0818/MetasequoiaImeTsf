@@ -1,4 +1,5 @@
 #include "tests/includes/test_framework.h"
+#include "tests/includes/test_utf8_path.h"
 #include "MetasequoiaImeEngine/japanese/romaji_converter.h"
 #include "MetasequoiaImeEngine/japanese/japanese_sentence_decoder.h"
 #include "MetasequoiaImeEngine/japanese/japanese_matrix_search.h"

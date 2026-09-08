@@ -1,4 +1,5 @@
 #include "tests/includes/test_framework.h"
+#include "tests/includes/test_utf8_path.h"
 #include "MetasequoiaImeEngine/user_dictionary/user_dictionary_journal.h"
 
 #include <sqlite3.h>
@@ -71,12 +72,12 @@ TEST_CASE(UserDictionaryReplayIsIdempotentAcrossAllSettingsDictionaries)
 
     REQUIRE(user_dictionary::record_upsert(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "ni'hao",
                                            "你好", 12000));
-    REQUIRE(
-        user_dictionary::record_delete(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "ni'hao", "旧词"));
+    REQUIRE(user_dictionary::record_delete(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "ni'hao",
+                                           "旧词"));
     REQUIRE(user_dictionary::record_upsert(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin,
                                            "shui'shan'shu'ru'fa'hai'ke'yi", "水杉输入法还可以", 5000));
-    REQUIRE(user_dictionary::record_upsert(test::Utf8(user_path), user_dictionary::DictionaryKind::Wubi, "wxyz", "新五笔",
-                                           88));
+    REQUIRE(user_dictionary::record_upsert(test::Utf8(user_path), user_dictionary::DictionaryKind::Wubi, "wxyz",
+                                           "新五笔", 88));
     REQUIRE(
         user_dictionary::record_delete(test::Utf8(user_path), user_dictionary::DictionaryKind::Wubi, "abcd", "旧五笔"));
     REQUIRE(user_dictionary::record_upsert(test::Utf8(user_path), user_dictionary::DictionaryKind::QuickPhrase, "mail",
@@ -88,7 +89,8 @@ TEST_CASE(UserDictionaryReplayIsIdempotentAcrossAllSettingsDictionaries)
 
     for (int pass = 0; pass < 2; ++pass)
     {
-        const auto replay = user_dictionary::replay(test::Utf8(user_path), test::Utf8(main_path), test::Utf8(english_path));
+        const auto replay =
+            user_dictionary::replay(test::Utf8(user_path), test::Utf8(main_path), test::Utf8(english_path));
         REQUIRE(replay.error.empty());
         REQUIRE_EQ(replay.failed, 0);
         REQUIRE_EQ(replay.applied, 8);
@@ -141,11 +143,11 @@ TEST_CASE(UserDictionaryTracksOnlyExplicitUserInsertionsForExport)
 
     REQUIRE(user_dictionary::record_upsert(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "xi'tong",
                                            "系统", 100));
-    REQUIRE(!user_dictionary::is_user_inserted(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "xi'tong",
-                                               "系统"));
+    REQUIRE(!user_dictionary::is_user_inserted(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin,
+                                               "xi'tong", "系统"));
 
-    REQUIRE(user_dictionary::record_user_insert(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "yong'hu",
-                                                "用户", 10000));
+    REQUIRE(user_dictionary::record_user_insert(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin,
+                                                "yong'hu", "用户", 10000));
     REQUIRE(user_dictionary::is_user_inserted(test::Utf8(user_path), user_dictionary::DictionaryKind::Pinyin, "yong'hu",
                                               "用户"));
 
@@ -175,8 +177,8 @@ TEST_CASE(EnterLearnedEnglishWordsAreValidatedPersistedAndIdempotent)
         REQUIRE(user_dictionary::learn_entered_english_word(test::Utf8(english_path), test::Utf8(user_path), word));
     REQUIRE(!user_dictionary::learn_entered_english_word(test::Utf8(english_path), test::Utf8(user_path), "ni'hao"));
     REQUIRE(!user_dictionary::learn_entered_english_word(test::Utf8(english_path), test::Utf8(user_path), "hello2"));
-    REQUIRE(
-        !user_dictionary::learn_entered_english_word(test::Utf8(english_path), test::Utf8(user_path), std::string(65, 'a')));
+    REQUIRE(!user_dictionary::learn_entered_english_word(test::Utf8(english_path), test::Utf8(user_path),
+                                                         std::string(65, 'a')));
 
     {
         TestDatabase english_db(english_path);
@@ -260,14 +262,14 @@ TEST_CASE(UserDictionarySupportsFixedPositionsAndDeferredSafeRanking)
 
     candidates = {{"ni", "甲", 100}, {"ni", "乙", 90}, {"ni", "丙", 80},
                   {"ni", "丁", 70},  {"ni", "戊", 60}, {"ni", "己", 50}};
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates, "ni",
-                                                      "己", "linear", 2, 2, false));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates,
+                                                      "ni", "己", "linear", 2, 2, false));
     {
         TestDatabase db(main_path);
         REQUIRE_EQ(db.scalar_int("SELECT weight FROM tbl_1_n WHERE value='己'"), 50);
     }
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates, "ni",
-                                                      "己", "linear", 2, 2, false));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates,
+                                                      "ni", "己", "linear", 2, 2, false));
     {
         TestDatabase db(main_path);
         REQUIRE(db.scalar_int("SELECT weight FROM tbl_1_n WHERE value='己'") > 70);
@@ -280,8 +282,8 @@ TEST_CASE(UserDictionarySupportsFixedPositionsAndDeferredSafeRanking)
                 "UPDATE tbl_1_n SET weight=98 WHERE value='丙';");
     }
     candidates = {{"ni", "甲", 100}, {"ni", "乙", 99}, {"ni", "丙", 98}};
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates, "ni",
-                                                      "丙", "linear", 1, 1, false));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates,
+                                                      "ni", "丙", "linear", 1, 1, false));
     {
         TestDatabase db(main_path);
         REQUIRE_EQ(db.scalar_int("SELECT weight FROM tbl_1_n WHERE value='丙'"), 101);
@@ -310,8 +312,8 @@ TEST_CASE(UserDictionaryRebalanceKeepsWeightsBounded)
         {"yi", "丙", 999998000000LL},
     };
 
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "yi", candidates, "yi",
-                                                      "丙", "pin", 1, 1, true));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "yi", candidates,
+                                                      "yi", "丙", "pin", 1, 1, true));
     {
         TestDatabase db(main_path);
         REQUIRE_EQ(db.scalar_int("SELECT COUNT(*) FROM tbl_1_y WHERE weight > 100000000"), 0);
@@ -371,8 +373,9 @@ TEST_CASE(UserDictionaryPromoteDoesNotCrushPrefixSinglesFromSeriesQuery)
     candidates.push_back({"xian", "县", 1, CandidateSource::Database, "xian"});
 
     bool ranking_changed = false;
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "xian'wang", candidates,
-                                                      "xian'wang", "现网", "promote", 1, 1, false, &ranking_changed));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "xian'wang",
+                                                      candidates, "xian'wang", "现网", "promote", 1, 1, false,
+                                                      &ranking_changed));
     REQUIRE(ranking_changed);
 
     {
@@ -422,8 +425,8 @@ TEST_CASE(UserDictionaryEqualWeightPromoteDoesNotWriteNegatives)
         {"ni", "甲", 1}, {"ni", "乙", 1}, {"ni", "丙", 1}, {"ni", "丁", 1}, {"ni", "戊", 1}, {"ni", "己", 1},
     };
 
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates, "ni",
-                                                      "己", "promote", 1, 1, false));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates,
+                                                      "ni", "己", "promote", 1, 1, false));
     {
         TestDatabase db(main_path);
         REQUIRE(db.scalar_int64("SELECT weight FROM tbl_1_n WHERE value='己'") > 1);
@@ -501,8 +504,8 @@ TEST_CASE(UserDictionaryLocalRebalanceKeepsPositiveSameKeyWeights)
         {"ni", "甲", 20000}, {"ni", "乙", 20000}, {"ni", "丙", 20000},
         {"ni", "丁", 20000}, {"ni", "戊", 20000}, {"ni", "己", 20000},
     };
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates, "ni",
-                                                      "己", "promote", 1, 1, false));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "ni", candidates,
+                                                      "ni", "己", "promote", 1, 1, false));
     {
         TestDatabase db(main_path);
         REQUIRE_EQ(db.scalar_int("SELECT COUNT(*) FROM tbl_1_n WHERE weight < 1"), 0);
@@ -533,8 +536,8 @@ TEST_CASE(UserDictionaryRankingIgnoresShorterKeysWithoutCanonicalPinyin)
         {"xianwang", "现网", 1},
         {"xianwang", "先", 1662684},
     };
-    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "xian'wang", candidates,
-                                                      "xian'wang", "现网", "promote", 1, 1, false));
+    REQUIRE(user_dictionary::adjust_candidate_ranking(test::Utf8(main_path), test::Utf8(user_path), "xian'wang",
+                                                      candidates, "xian'wang", "现网", "promote", 1, 1, false));
     {
         TestDatabase db(main_path);
         REQUIRE(db.scalar_int64("SELECT weight FROM tbl_2_x WHERE value='现网'") > 1);
