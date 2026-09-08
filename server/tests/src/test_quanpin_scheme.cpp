@@ -25,7 +25,7 @@ std::filesystem::path CreatePinyinCacheDatabase()
     const auto path = std::filesystem::temp_directory_path() / "msime-pinyin-cache-refresh-test.db";
     std::filesystem::remove(path);
     sqlite3 *db = nullptr;
-    if (sqlite3_open(path.string().c_str(), &db) != SQLITE_OK)
+    if (sqlite3_open(test::Utf8(path).c_str(), &db) != SQLITE_OK)
     {
         throw std::runtime_error("Failed to create temporary pinyin database.");
     }
@@ -209,7 +209,7 @@ TEST_CASE(QuanpinDictionaryKeepsBestAlternativeSegmentationNearTheFront)
 {
     const auto db_path = CreatePinyinCacheDatabase();
     {
-        QuanpinDictionary dictionary(db_path.string());
+        QuanpinDictionary dictionary(test::Utf8(db_path));
         const auto candidates = dictionary.query("xian", "xian");
         const auto alternative = std::find_if(candidates.begin(), candidates.end(), [](const WordItem &item) {
             return item.word == "__alternative_xi_an__";
@@ -224,7 +224,7 @@ TEST_CASE(QuanpinDictionaryTriesFourSyllablesButBoundsFiveSyllableAmbiguity)
 {
     const auto db_path = CreatePinyinCacheDatabase();
     {
-        QuanpinDictionary dictionary(db_path.string());
+        QuanpinDictionary dictionary(test::Utf8(db_path));
 
         const auto three_syllable_candidates = dictionary.query("xianxianxian", "xian'xian'xian");
         REQUIRE(std::any_of(three_syllable_candidates.begin(), three_syllable_candidates.end(),
@@ -245,12 +245,12 @@ TEST_CASE(QuanpinCandidateCacheDetectsExternalDictionaryWrites)
 {
     const auto db_path = CreatePinyinCacheDatabase();
     {
-        QuanpinDictionary dictionary(db_path.string());
+        QuanpinDictionary dictionary(test::Utf8(db_path));
         const auto before = dictionary.query("aoshike", "ao'shi'ke");
         REQUIRE(std::none_of(before.begin(), before.end(), [](const WordItem &item) { return item.word == "澳鳾科"; }));
 
         sqlite3 *writer = nullptr;
-        REQUIRE_EQ(sqlite3_open(db_path.string().c_str(), &writer), SQLITE_OK);
+        REQUIRE_EQ(sqlite3_open(test::Utf8(db_path).c_str(), &writer), SQLITE_OK);
         REQUIRE_EQ(sqlite3_exec(writer, "INSERT INTO tbl_3_a VALUES('ao''shi''ke','ask','澳鳾科',1)", nullptr, nullptr,
                                 nullptr),
                    SQLITE_OK);
@@ -583,7 +583,7 @@ std::filesystem::path CreateAutocorrectDatabase()
     const auto path = std::filesystem::temp_directory_path() / "msime-quanpin-autocorrect-test.db";
     std::filesystem::remove(path);
     sqlite3 *db = nullptr;
-    if (sqlite3_open(path.string().c_str(), &db) != SQLITE_OK)
+    if (sqlite3_open(test::Utf8(path).c_str(), &db) != SQLITE_OK)
     {
         throw std::runtime_error("Failed to create temporary autocorrect database.");
     }
@@ -607,7 +607,7 @@ std::filesystem::path CreateAutocorrectDatabase()
 TEST_CASE(QuanpinDictionaryAutocorrectPutsCorrectedCandidateFirst)
 {
     const auto db_path = CreateAutocorrectDatabase();
-    QuanpinDictionary dictionary(db_path.string());
+    QuanpinDictionary dictionary(test::Utf8(db_path));
 
     const auto candidates = dictionary.query("sahng", "sa'h'n'g", true);
     REQUIRE(!candidates.empty());
@@ -625,7 +625,7 @@ TEST_CASE(QuanpinDictionaryAutocorrectPutsCorrectedCandidateFirst)
 TEST_CASE(QuanpinDictionaryAutocorrectNeighborKeySubstitution)
 {
     const auto db_path = CreateAutocorrectDatabase();
-    QuanpinDictionary dictionary(db_path.string());
+    QuanpinDictionary dictionary(test::Utf8(db_path));
 
     const auto candidates = dictionary.query("shabg", "sha'b'g", true);
     REQUIRE(!candidates.empty());
@@ -635,7 +635,7 @@ TEST_CASE(QuanpinDictionaryAutocorrectNeighborKeySubstitution)
 TEST_CASE(QuanpinDictionaryAutocorrectMultisyllableInput)
 {
     const auto db_path = CreateAutocorrectDatabase();
-    QuanpinDictionary dictionary(db_path.string());
+    QuanpinDictionary dictionary(test::Utf8(db_path));
 
     const auto candidates = dictionary.query("sahngzhi", "sa'h'n'g'zhi", true);
     REQUIRE(!candidates.empty());
@@ -645,7 +645,7 @@ TEST_CASE(QuanpinDictionaryAutocorrectMultisyllableInput)
 TEST_CASE(QuanpinDictionaryAutocorrectDisabledKeepsLegacyBehavior)
 {
     const auto db_path = CreateAutocorrectDatabase();
-    QuanpinDictionary dictionary(db_path.string());
+    QuanpinDictionary dictionary(test::Utf8(db_path));
 
     const auto candidates = dictionary.query("sahng", "sa'h'n'g", false);
     REQUIRE(!candidates.empty());
@@ -657,7 +657,7 @@ TEST_CASE(QuanpinDictionaryAutocorrectDisabledKeepsLegacyBehavior)
 TEST_CASE(QuanpinDictionaryAutocorrectLeavesLegalInputsUntouched)
 {
     const auto db_path = CreateAutocorrectDatabase();
-    QuanpinDictionary dictionary(db_path.string());
+    QuanpinDictionary dictionary(test::Utf8(db_path));
 
     // Corrected results live in their own cache slot; a plain spelling never
     // sees the fallback tail produced for the corrected spelling.

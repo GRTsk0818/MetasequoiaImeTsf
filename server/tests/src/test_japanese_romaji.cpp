@@ -40,7 +40,7 @@ std::filesystem::path CreateJapaneseDatabase()
     const auto path = std::filesystem::temp_directory_path() / "msime-japanese-provider-test.db";
     std::filesystem::remove(path);
     sqlite3 *db = nullptr;
-    if (sqlite3_open(path.string().c_str(), &db) != SQLITE_OK)
+    if (sqlite3_open(test::Utf8(path).c_str(), &db) != SQLITE_OK)
         throw std::runtime_error("Failed to create Japanese test database.");
     const char *sql = "CREATE TABLE japanese_lexicon(code TEXT,value TEXT,weight INTEGER,PRIMARY KEY(code,value));"
                       "INSERT INTO japanese_lexicon VALUES('qa','亜',20);"
@@ -114,7 +114,7 @@ TEST_CASE(JapaneseProviderCombinesGeneratedKanaAndSqliteCandidates)
 {
     const auto path = CreateJapaneseDatabase();
     {
-        JapaneseCandidateProvider provider(path.string());
+        JapaneseCandidateProvider provider(test::Utf8(path));
         QueryRequest kana;
         kana.scheme = SchemeType::JapaneseRomaji;
         kana.raw_input = "nihongo";
@@ -190,7 +190,7 @@ TEST_CASE(JapaneseProviderShowsPhrasesBeforeConvertedKana)
 {
     const auto path = CreateJapaneseDatabase();
     {
-        JapaneseCandidateProvider provider(path.string());
+        JapaneseCandidateProvider provider(test::Utf8(path));
         QueryRequest request;
         request.scheme = SchemeType::JapaneseRomaji;
         request.raw_input = "nihong";
@@ -210,7 +210,7 @@ TEST_CASE(JapaneseMatrixSearchDecodesWholeSentenceWhenModelAvailable)
     if (!std::filesystem::is_regular_file(model))
         return;
 
-    japanese::JapaneseSentenceDecoder decoder(model.string());
+    japanese::JapaneseSentenceDecoder decoder(test::Utf8(model));
     REQUIRE(decoder.ready());
     japanese::JapaneseMatrixSearch search(decoder);
     const auto complete = search.Search("nihongo", 12);
@@ -257,7 +257,7 @@ TEST_CASE(JapaneseSentenceDecoderReadsGeneratedMozcModelWhenAvailable)
     if (!std::filesystem::is_regular_file(model))
         return;
 
-    japanese::JapaneseSentenceDecoder decoder(model.string());
+    japanese::JapaneseSentenceDecoder decoder(test::Utf8(model));
     REQUIRE(decoder.ready());
     const auto candidates = decoder.Decode("にほんご", 12);
     REQUIRE(!candidates.empty());
