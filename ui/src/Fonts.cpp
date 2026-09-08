@@ -1,6 +1,10 @@
 #include "msimeui/Fonts.h"
 
 #include <dwrite_2.h>
+#include <map>
+#include <mutex>
+#include <utility>
+#include <vector>
 #include <wrl/client.h>
 
 namespace msimeui
@@ -35,6 +39,77 @@ IDWriteFactory *SharedFactory()
     }
     return factory.Get();
 }
+
+constexpr wchar_t kFluentIconsFamily[] = L"Segoe Fluent Icons";
+constexpr wchar_t kMdl2IconsFamily[] = L"Segoe MDL2 Assets";
+
+ComPtr<IDWriteFont> FindFont(IDWriteFactory *factory, const wchar_t *name)
+{
+    if (!factory || !name)
+    {
+        return nullptr;
+    }
+    ComPtr<IDWriteFontCollection> fonts;
+    if (FAILED(factory->GetSystemFontCollection(fonts.GetAddressOf())) || !fonts)
+    {
+        return nullptr;
+    }
+    UINT32 index = 0;
+    BOOL exists = FALSE;
+    if (FAILED(fonts->FindFamilyName(name, &index, &exists)) || !exists)
+    {
+        return nullptr;
+    }
+    ComPtr<IDWriteFontFamily> family;
+    if (FAILED(fonts->GetFontFamily(index, family.GetAddressOf())))
+    {
+        return nullptr;
+    }
+    ComPtr<IDWriteFont> font;
+    if (FAILED(family->GetFirstMatchingFont(DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+                                            DWRITE_FONT_STYLE_NORMAL, font.GetAddressOf())))
+    {
+        return nullptr;
+    }
+    return font;
+}
+
+struct IconFontEntry
+{
+    const wchar_t *family = nullptr;
+    bool isMdl2 = false;
+    ComPtr<IDWriteFont> font;
+};
+
+// Installed icon fonts, in preference order. Built once per process, so a font
+// installed while the process runs is only picked up after a restart.
+const std::vector<IconFontEntry> &IconFonts()
+{
+    static const std::vector<IconFontEntry> entries = []() {
+        std::vector<IconFontEntry> list;
+        IDWriteFactory *factory = SharedFactory();
+        if (ComPtr<IDWriteFont> fluent = FindFont(factory, kFluentIconsFamily))
+        {
+            list.push_back({kFluentIconsFamily, false, std::move(fluent)});
+        }
+        if (ComPtr<IDWriteFont> mdl2 = FindFont(factory, kMdl2IconsFamily))
+        {
+            list.push_back({kMdl2IconsFamily, true, std::move(mdl2)});
+        }
+        return list;
+    }();
+    return entries;
+}
+
+bool FontHasCodepoint(IDWriteFont *font, wchar_t codepoint)
+{
+    if (!font || codepoint == 0)
+    {
+        return false;
+    }
+    BOOL exists = FALSE;
+    return SUCCEEDED(font->HasCharacter(codepoint, &exists)) && exists;
+}
 } // namespace
 
 const wchar_t *UiFontFallbackFamily()
@@ -48,6 +123,34 @@ const wchar_t *UiFontFamily()
     static const wchar_t *family =
         FontFamilyExists(factory, L"Noto Sans SC") ? L"Noto Sans SC" : UiFontFallbackFamily();
     return family;
+}
+
+IconGlyph ResolveIconGlyph(wchar_t fluentCodepoint, wchar_t mdl2Codepoint)
+{
+    static std::mutex mutex;
+    static std::map<std::pair<wchar_t, wchar_t>, IconGlyph> cache;
+
+    const std::pair<wchar_t, wchar_t> key{fluentCodepoint, mdl2Codepoint};
+    std::lock_guard<std::mutex> lock(mutex);
+    const auto cached = cache.find(key);
+    if (cached != cache.end())
+    {
+        return cached->second;
+    }
+
+    IconGlyph resolved;
+    for (const IconFontEntry &entry : IconFonts())
+    {
+        const wchar_t codepoint = (entry.isMdl2 && mdl2Codepoint != 0) ? mdl2Codepoint : fluentCodepoint;
+        if (FontHasCodepoint(entry.font.Get(), codepoint))
+        {
+            resolved.family = entry.family;
+            resolved.codepoint = codepoint;
+            break;
+        }
+    }
+    cache.emplace(key, resolved);
+    return resolved;
 }
 
 void ApplyUiFontFallback(IDWriteFactory *factory, IDWriteTextFormat *format)
