@@ -165,6 +165,8 @@ const std::string &GetConfiguredJapaneseSchema();
 bool SetConfiguredJapaneseSchema(const std::string &schema);
 const std::string &GetConfiguredCharacterSet();
 bool SetConfiguredCharacterSet(const std::string &character_set);
+bool GetConfiguredCharacterSetShortcutEnabled();
+bool SetConfiguredCharacterSetShortcutEnabled(bool enabled);
 // "chinese" | "english" — default CN/EN when activating this IME.
 const std::string &GetConfiguredDefaultImeMode();
 bool SetConfiguredDefaultImeMode(const std::string &mode);
@@ -265,6 +267,8 @@ bool GetConfiguredCandidateArrowNavigationEnabled();
 bool SetConfiguredCandidateArrowNavigationEnabled(bool enabled);
 bool GetConfiguredWordToCharacterEnabled();
 bool SetConfiguredWordToCharacterEnabled(bool enabled);
+std::string GetConfiguredWordToCharacterKeys();
+bool SetConfiguredWordToCharacterKeys(const std::string &keys);
 bool GetConfiguredSmartPunctuationEnabled();
 bool SetConfiguredSmartPunctuationEnabled(bool enabled);
 bool GetConfiguredSmartPunctuationRepeatToChineseEnabled();

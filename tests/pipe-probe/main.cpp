@@ -73,7 +73,7 @@ void Require(bool condition, const char *message)
         throw std::runtime_error(message);
 }
 
-void Probe(unsigned sequence, bool legacy, bool incompatible)
+void Probe(unsigned sequence, bool legacy, bool incompatible, bool character_set_shortcut = false)
 {
     const auto client = (static_cast<std::uint64_t>(GetCurrentProcessId()) << 32) | sequence;
     Pipe replies(FANY_IME_TO_TSF_NAMED_PIPE);
@@ -90,7 +90,9 @@ void Probe(unsigned sequence, bool legacy, bool incompatible)
             "Worker endpoint was not registered");
 
     Pipe main(FANY_IME_NAMED_PIPE);
-    auto hello = FanyImeProtocol::Hello(client, sequence);
+    auto hello = FanyImeProtocol::Hello(
+        client, sequence,
+        FanyImeProtocol::Capabilities | (character_set_shortcut ? FanyImeProtocol::CharacterSetShortcut : 0u));
     if (legacy)
     {
         hello = {};
@@ -111,6 +113,9 @@ void Probe(unsigned sequence, bool legacy, bool incompatible)
             return;
         }
         Require(FanyImeProtocol::AcceptReply(acknowledgement, sequence), "Versioned registration failed");
+        Require(((FanyImeProtocol::ReplyCapabilities(acknowledgement) & FanyImeProtocol::CharacterSetShortcut) != 0) ==
+                    character_set_shortcut,
+                "Character-set shortcut capability was not negotiated correctly");
     }
 
     FanyImeNamedpipeData activation{};
@@ -142,7 +147,8 @@ int main()
         Probe(2, true, false);
         Probe(3, false, true);
         Probe(4, false, false); // reconnect after the rejected client
-        std::cout << "Real Server: new client, legacy client, version rejection and reconnect passed\n";
+        Probe(5, false, false, true);
+        std::cout << "Real Server: new client, legacy client, version rejection, reconnect and optional shortcut capability passed\n";
         return 0;
     }
     catch (const std::exception &error)

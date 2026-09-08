@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <initializer_list>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -53,6 +54,7 @@ std::string g_ime_mode_scope = "app";
 bool g_switch_language_shift_enabled = true;
 bool g_switch_language_ctrl_enabled = false;
 bool g_switch_language_ctrl_alt_space_enabled = true;
+bool g_character_set_shortcut_enabled = true;
 int g_candidate_page_size = 8;
 std::string g_candidate_font = "Noto Sans SC";
 std::string g_candidate_english_font = "Segoe UI";
@@ -99,6 +101,7 @@ bool g_paging_tab_enabled = true;
 bool g_paging_page_up_down_enabled = true;
 bool g_candidate_arrow_navigation_enabled = true;
 bool g_word_to_character_enabled = false;
+std::string g_word_to_character_keys = "brackets";
 bool g_smart_punctuation_enabled = true;
 bool g_smart_punctuation_repeat_to_chinese_enabled = true;
 bool g_paired_punctuation_enabled = true;
@@ -769,7 +772,11 @@ bool LoadImeConfig()
         g_paging_page_up_down_enabled = tbl["general"]["paging_page_up_down"].value_or(true);
         g_candidate_arrow_navigation_enabled = tbl["general"]["candidate_arrow_navigation"].value_or(true);
         g_word_to_character_enabled = tbl["input"]["word_to_character"].value_or(false);
-        if (g_paging_brackets_enabled && g_word_to_character_enabled)
+        g_word_to_character_keys = tbl["input"]["word_to_character_keys"].value_or(std::string("brackets"));
+        if (g_word_to_character_keys != "minus_equal")
+            g_word_to_character_keys = "brackets";
+        if ((g_word_to_character_keys == "brackets" ? g_paging_brackets_enabled : g_paging_minus_equal_enabled) &&
+            g_word_to_character_enabled)
         {
             g_word_to_character_enabled = false;
         }
@@ -805,6 +812,7 @@ bool LoadImeConfig()
             g_switch_language_ctrl_enabled = tbl["keybindings"]["switch_language_ctrl"].value_or(false);
             g_switch_language_ctrl_alt_space_enabled =
                 tbl["keybindings"]["switch_language_ctrl_alt_space"].value_or(legacy_ctrl_alt_space);
+            g_character_set_shortcut_enabled = tbl["keybindings"]["toggle_character_set_ctrl_shift_f"].value_or(true);
         }
         {
             const std::string mode = tbl["frequency_adjustment"]["mode"].value_or(std::string("promote"));
@@ -1012,7 +1020,14 @@ bool LoadImeConfig()
     }
 }
 
-bool WriteConfiguredValue(const std::string &section, const std::string &key, const std::string &replacement)
+struct ConfigValueUpdate
+{
+    std::string section;
+    std::string key;
+    std::string value;
+};
+
+bool WriteConfiguredValues(std::initializer_list<ConfigValueUpdate> updates)
 {
     ConfigFileLock lock;
     if (!lock)
@@ -1025,10 +1040,13 @@ bool WriteConfiguredValue(const std::string &section, const std::string &key, co
     std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
     input.close();
 
-    if (!ReplaceTomlValuePreservingFormatting(text, section, key, replacement) &&
-        !InsertTomlValuePreservingFormatting(text, section, key, replacement))
+    for (const auto &update : updates)
     {
-        return false;
+        if (!ReplaceTomlValuePreservingFormatting(text, update.section, update.key, update.value) &&
+            !InsertTomlValuePreservingFormatting(text, update.section, update.key, update.value))
+        {
+            return false;
+        }
     }
 
     try
@@ -1050,6 +1068,11 @@ bool WriteConfiguredValue(const std::string &section, const std::string &key, co
     RememberConfigWriteTime();
     NotifyImeServerConfigChanged();
     return true;
+}
+
+bool WriteConfiguredValue(const std::string &section, const std::string &key, const std::string &replacement)
+{
+    return WriteConfiguredValues({{section, key, replacement}});
 }
 
 void PersistSeededVoiceInputTokenSlots()
@@ -1670,6 +1693,22 @@ bool SetConfiguredCharacterSet(const std::string &character_set)
         return false;
     }
     g_character_set = character_set;
+    // Marshal WebView/native toolbar refreshes to their owner thread. Settings
+    // in a separate process reaches the same refresh through ConfigChanged.
+    NotifyImeServer(WM_REFRESH_CHARACTER_SET, L"ConfigChanged");
+    return true;
+}
+
+bool GetConfiguredCharacterSetShortcutEnabled()
+{
+    return g_character_set_shortcut_enabled;
+}
+
+bool SetConfiguredCharacterSetShortcutEnabled(bool enabled)
+{
+    if (!WriteConfiguredValue("keybindings", "toggle_character_set_ctrl_shift_f", enabled ? "true" : "false"))
+        return false;
+    g_character_set_shortcut_enabled = enabled;
     return true;
 }
 
@@ -2154,11 +2193,14 @@ bool GetConfiguredPagingMinusEqualEnabled()
 
 bool SetConfiguredPagingMinusEqualEnabled(bool enabled)
 {
-    if (!WriteConfiguredValue("general", "paging_minus_equal", enabled ? "true" : "false"))
+    const bool word_enabled = g_word_to_character_enabled && !(enabled && g_word_to_character_keys == "minus_equal");
+    if (!WriteConfiguredValues({{"general", "paging_minus_equal", enabled ? "true" : "false"},
+                                {"input", "word_to_character", word_enabled ? "true" : "false"}}))
     {
         return false;
     }
     g_paging_minus_equal_enabled = enabled;
+    g_word_to_character_enabled = word_enabled;
     return true;
 }
 
@@ -2199,18 +2241,14 @@ bool GetConfiguredPagingBracketsEnabled()
 
 bool SetConfiguredPagingBracketsEnabled(bool enabled)
 {
-    if (!WriteConfiguredValue("general", "paging_brackets", enabled ? "true" : "false"))
+    const bool word_enabled = g_word_to_character_enabled && !(enabled && g_word_to_character_keys == "brackets");
+    if (!WriteConfiguredValues({{"general", "paging_brackets", enabled ? "true" : "false"},
+                                {"input", "word_to_character", word_enabled ? "true" : "false"}}))
     {
         return false;
     }
     g_paging_brackets_enabled = enabled;
-    if (enabled && g_word_to_character_enabled)
-    {
-        if (WriteConfiguredValue("input", "word_to_character", "false"))
-        {
-            g_word_to_character_enabled = false;
-        }
-    }
+    g_word_to_character_enabled = word_enabled;
     return true;
 }
 
@@ -2255,21 +2293,39 @@ bool GetConfiguredWordToCharacterEnabled()
     return g_word_to_character_enabled;
 }
 
-bool SetConfiguredWordToCharacterEnabled(bool enabled)
+std::string GetConfiguredWordToCharacterKeys()
 {
-    if (!WriteConfiguredValue("input", "word_to_character", enabled ? "true" : "false"))
+    return g_word_to_character_keys;
+}
+
+static bool SetWordToCharacterConfig(bool enabled, const std::string &keys)
+{
+    if (keys != "brackets" && keys != "minus_equal")
+        return false;
+    const bool brackets = g_paging_brackets_enabled && !(enabled && keys == "brackets");
+    const bool minus_equal = g_paging_minus_equal_enabled && !(enabled && keys == "minus_equal");
+    if (!WriteConfiguredValues({{"input", "word_to_character", enabled ? "true" : "false"},
+                                {"input", "word_to_character_keys", EscapeTomlBasicString(keys)},
+                                {"general", "paging_brackets", brackets ? "true" : "false"},
+                                {"general", "paging_minus_equal", minus_equal ? "true" : "false"}}))
     {
         return false;
     }
     g_word_to_character_enabled = enabled;
-    if (enabled && g_paging_brackets_enabled)
-    {
-        if (WriteConfiguredValue("general", "paging_brackets", "false"))
-        {
-            g_paging_brackets_enabled = false;
-        }
-    }
+    g_word_to_character_keys = keys;
+    g_paging_brackets_enabled = brackets;
+    g_paging_minus_equal_enabled = minus_equal;
     return true;
+}
+
+bool SetConfiguredWordToCharacterEnabled(bool enabled)
+{
+    return SetWordToCharacterConfig(enabled, g_word_to_character_keys);
+}
+
+bool SetConfiguredWordToCharacterKeys(const std::string &keys)
+{
+    return SetWordToCharacterConfig(g_word_to_character_enabled, keys);
 }
 
 bool GetConfiguredSmartPunctuationEnabled()

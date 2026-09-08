@@ -2423,6 +2423,15 @@ LRESULT CALLBACK WndProcCandWindow(HWND hwnd, UINT message, WPARAM wParam, LPARA
         return 0;
     }
 
+    if (message == WM_REFRESH_CHARACTER_SET)
+    {
+        UpdateFtbCharacterSetState(::webviewFtbWnd);
+        FloatingToolbarPresenter::Instance().ApplyTheme();
+        FanyNamedPipe::EnqueueRefreshCandidatePageTask();
+        PostSettingsConfig();
+        return 0;
+    }
+
     if (message == WM_APPLY_IME_CONFIG)
     {
         if (wParam != 0)
