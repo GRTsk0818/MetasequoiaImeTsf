@@ -31,7 +31,11 @@ bool FontFamilyExists(IDWriteFactory *factory, const wchar_t *name)
 
 IDWriteFactory *SharedFactory()
 {
+    // Called from several window threads, so the lazy creation needs a lock of
+    // its own; the factory is never reset, so the returned pointer stays valid.
+    static std::mutex mutex;
     static ComPtr<IDWriteFactory> factory;
+    std::lock_guard<std::mutex> lock(mutex);
     if (!factory)
     {
         DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
@@ -81,23 +85,27 @@ struct IconFontEntry
     ComPtr<IDWriteFont> font;
 };
 
-// Installed icon fonts, in preference order. Built once per process, so a font
-// installed while the process runs is only picked up after a restart.
+// Installed icon fonts, in preference order. Kept once the probe finds one, so
+// a font installed while the process runs is only picked up after a restart. An
+// empty result is not kept: a transient DirectWrite failure on the first call
+// would otherwise degrade every icon to its text label for the whole process.
+// Callers must hold the ResolveIconGlyph mutex, its only caller.
 const std::vector<IconFontEntry> &IconFonts()
 {
-    static const std::vector<IconFontEntry> entries = []() {
-        std::vector<IconFontEntry> list;
-        IDWriteFactory *factory = SharedFactory();
-        if (ComPtr<IDWriteFont> fluent = FindFont(factory, kFluentIconsFamily))
-        {
-            list.push_back({kFluentIconsFamily, false, std::move(fluent)});
-        }
-        if (ComPtr<IDWriteFont> mdl2 = FindFont(factory, kMdl2IconsFamily))
-        {
-            list.push_back({kMdl2IconsFamily, true, std::move(mdl2)});
-        }
-        return list;
-    }();
+    static std::vector<IconFontEntry> entries;
+    if (!entries.empty())
+    {
+        return entries;
+    }
+    IDWriteFactory *factory = SharedFactory();
+    if (ComPtr<IDWriteFont> fluent = FindFont(factory, kFluentIconsFamily))
+    {
+        entries.push_back({kFluentIconsFamily, false, std::move(fluent)});
+    }
+    if (ComPtr<IDWriteFont> mdl2 = FindFont(factory, kMdl2IconsFamily))
+    {
+        entries.push_back({kMdl2IconsFamily, true, std::move(mdl2)});
+    }
     return entries;
 }
 
@@ -139,7 +147,14 @@ IconGlyph ResolveIconGlyph(wchar_t fluentCodepoint, wchar_t mdl2Codepoint)
     }
 
     IconGlyph resolved;
-    for (const IconFontEntry &entry : IconFonts())
+    const std::vector<IconFontEntry> &fonts = IconFonts();
+    if (fonts.empty())
+    {
+        // No icon font found yet. Report the text fallback but do not cache it,
+        // so a later call can still pick one up once DirectWrite recovers.
+        return resolved;
+    }
+    for (const IconFontEntry &entry : fonts)
     {
         const wchar_t codepoint = (entry.isMdl2 && mdl2Codepoint != 0) ? mdl2Codepoint : fluentCodepoint;
         if (FontHasCodepoint(entry.font.Get(), codepoint))
