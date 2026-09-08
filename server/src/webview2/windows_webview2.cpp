@@ -2523,7 +2523,7 @@ bool ApplyConfiguredFloatingToolbarAppearance(std::function<void()> onComplete)
 {
     if (FloatingToolbarPresenter::Instance().IsBound())
     {
-        FloatingToolbarPresenter::Instance().RelayoutHost();
+        FloatingToolbarPresenter::Instance().ApplyAppearance();
         if (onComplete)
         {
             onComplete();
