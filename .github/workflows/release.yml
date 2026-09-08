@@ -186,10 +186,23 @@ jobs:
       # Some runner instances leave _work owned by SYSTEM while the job itself
       # runs as `runner`. checkout still succeeds, so the first plain git call
       # is what exits 128 on dubious ownership, minutes into the job.
+      #
+      # The self-hosted jobs are separate runner instances on one machine, so
+      # they share C:\Users\runner\.gitconfig and reach this step in the same
+      # second. Whoever loses that race gets "could not lock config file". Read
+      # the list back before each attempt so a peer's write counts as success.
       - name: Trust the runner workspace
         shell: pwsh
         run: |
-          git config --global --add safe.directory ($env:GITHUB_WORKSPACE -replace '\\', '/')
+          $workspace = $env:GITHUB_WORKSPACE -replace '\\', '/'
+          foreach ($attempt in 1..10) {
+              $trusted = git config --global --get-all safe.directory
+              if ($trusted -contains $workspace) { exit 0 }
+              git config --global --add safe.directory $workspace
+              if ($LASTEXITCODE -eq 0) { exit 0 }
+              Start-Sleep -Milliseconds (200 * $attempt)
+          }
+          throw "Could not add $workspace to the global safe.directory list"
 
       - name: Stamp the version resource
         shell: pwsh
@@ -260,10 +273,23 @@ jobs:
       # Some runner instances leave _work owned by SYSTEM while the job itself
       # runs as `runner`. checkout still succeeds, so the first plain git call
       # is what exits 128 on dubious ownership, minutes into the job.
+      #
+      # The self-hosted jobs are separate runner instances on one machine, so
+      # they share C:\Users\runner\.gitconfig and reach this step in the same
+      # second. Whoever loses that race gets "could not lock config file". Read
+      # the list back before each attempt so a peer's write counts as success.
       - name: Trust the runner workspace
         shell: pwsh
         run: |
-          git config --global --add safe.directory ($env:GITHUB_WORKSPACE -replace '\\', '/')
+          $workspace = $env:GITHUB_WORKSPACE -replace '\\', '/'
+          foreach ($attempt in 1..10) {
+              $trusted = git config --global --get-all safe.directory
+              if ($trusted -contains $workspace) { exit 0 }
+              git config --global --add safe.directory $workspace
+              if ($LASTEXITCODE -eq 0) { exit 0 }
+              Start-Sleep -Milliseconds (200 * $attempt)
+          }
+          throw "Could not add $workspace to the global safe.directory list"
 
       - name: Install Boost
         shell: pwsh
@@ -393,10 +419,23 @@ jobs:
       # Some runner instances leave _work owned by SYSTEM while the job itself
       # runs as `runner`. checkout still succeeds, so the first plain git call
       # is what exits 128 on dubious ownership, minutes into the job.
+      #
+      # The self-hosted jobs are separate runner instances on one machine, so
+      # they share C:\Users\runner\.gitconfig and reach this step in the same
+      # second. Whoever loses that race gets "could not lock config file". Read
+      # the list back before each attempt so a peer's write counts as success.
       - name: Trust the runner workspace
         shell: pwsh
         run: |
-          git config --global --add safe.directory ($env:GITHUB_WORKSPACE -replace '\\', '/')
+          $workspace = $env:GITHUB_WORKSPACE -replace '\\', '/'
+          foreach ($attempt in 1..10) {
+              $trusted = git config --global --get-all safe.directory
+              if ($trusted -contains $workspace) { exit 0 }
+              git config --global --add safe.directory $workspace
+              if ($LASTEXITCODE -eq 0) { exit 0 }
+              Start-Sleep -Milliseconds (200 * $attempt)
+          }
+          throw "Could not add $workspace to the global safe.directory list"
 
       - name: Verify the release commit is on main
         shell: bash
