@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.7](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.6...v0.6.7) (2026-09-08)
+
+
+### Bug Fixes
+
+* **ci:** stop the self-hosted jobs racing on the global git config ([f7cd4e6](https://github.com/metasequoiaime/MSIME-Windows/commit/f7cd4e6174893f05c7733cb1abf31bdee7a36a89))
+* **ci:** stop the self-hosted jobs racing on the global git config ([d7e7b3f](https://github.com/metasequoiaime/MSIME-Windows/commit/d7e7b3f0d961372fa25d76523d743bfc9262c1fb))
+
 ## [0.6.6](https://github.com/metasequoiaime/MSIME-Windows/compare/v0.6.5...v0.6.6) (2026-09-08)
 
 
