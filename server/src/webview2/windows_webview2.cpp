@@ -2243,7 +2243,7 @@ int PrepareHtmlForWnds()
     // e.g. C:\\Users\\SonnyCalcr\\AppData\\Local\\metasequoiaime
     std::wstring assetPath = fmt::format( //
         L"{}\\{}",                        //
-        string_to_wstring(CommonUtils::get_local_appdata_path()), GlobalIme::AppName);
+        CommonUtils::get_local_appdata_path_w(), GlobalIme::AppName);
 
     //
     // 候选窗口
@@ -2777,10 +2777,10 @@ HRESULT OnControllerCreatedCandWnd(     //
         webview3CandWnd->SetVirtualHostNameToFolderMapping(L"msime-contracts", contractsPath.wstring().c_str(),
                                                            COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
 
-        const std::wstring assetPath = fmt::format(                   //
-            L"{}\\{}\\html\\webview2\\candwnd",                       //
-            string_to_wstring(CommonUtils::get_local_appdata_path()), //
-            GlobalIme::AppName                                        //
+        const std::wstring assetPath = fmt::format(  //
+            L"{}\\{}\\html\\webview2\\candwnd",      //
+            CommonUtils::get_local_appdata_path_w(), //
+            GlobalIme::AppName                       //
         );
 
         // Assets mapping
@@ -2791,7 +2791,7 @@ HRESULT OnControllerCreatedCandWnd(     //
         );                                                                            //
         const std::wstring skinsPath = fmt::format(                                   //
             L"{}\\{}\\skins",                                                         //
-            string_to_wstring(CommonUtils::get_local_appdata_path()),                 //
+            CommonUtils::get_local_appdata_path_w(),                                  //
             GlobalIme::AppName                                                        //
         );
         const HRESULT skinsMappingHr = webview3CandWnd->SetVirtualHostNameToFolderMapping(
@@ -3473,10 +3473,10 @@ HRESULT OnControllerCreatedSettingsWnd(            //
     // Configure virtual host path
     if (SUCCEEDED(webviewSettingsWnd->QueryInterface(IID_PPV_ARGS(&webview3SettingsWnd))))
     {
-        const std::wstring assetPath = fmt::format(                   //
-            L"{}\\{}\\html\\webview2\\settings\\ime-settings\\dist",  //
-            string_to_wstring(CommonUtils::get_local_appdata_path()), //
-            GlobalIme::AppName                                        //
+        const std::wstring assetPath = fmt::format(                  //
+            L"{}\\{}\\html\\webview2\\settings\\ime-settings\\dist", //
+            CommonUtils::get_local_appdata_path_w(),                 //
+            GlobalIme::AppName                                       //
         );
         // Assets mapping
         webview3SettingsWnd->SetVirtualHostNameToFolderMapping( //
