@@ -384,6 +384,8 @@ std::wstring BuildConfigMessage(bool refresh_skin_catalog)
             {"page_size", GetConfiguredCandidatePageSize()},
             {"font", GetConfiguredCandidateFont()},
             {"font_css_family", ResolveSystemFontFamilyForCss(GetConfiguredCandidateFont())},
+            {"fallback_fonts", GetConfiguredCandidateFallbackFonts()},
+            {"fallback_font_css_families", GetConfiguredCandidateFallbackFontFamilies()},
             {"english_font", GetConfiguredCandidateEnglishFont()},
             {"english_font_css_family", ResolveSystemFontFamilyForCss(GetConfiguredCandidateEnglishFont())},
             {"default_font", GetConfiguredCandidateDefaultFont()},
@@ -566,6 +568,9 @@ bool ApplyConfigUpdate(const json::object &data)
         return SetConfiguredCandidatePageSize(static_cast<int>(data.at("value").as_int64()));
     if (path == "appearance.font")
         return SetConfiguredCandidateFont(json::value_to<std::string>(data.at("value")));
+    if (path == "appearance.fallback_fonts")
+        return SetConfiguredCandidateFallbackFonts(
+            json::value_to<std::vector<std::string>>(json::parse(json::value_to<std::string>(data.at("value")))));
     if (path == "appearance.english_font")
         return SetConfiguredCandidateEnglishFont(json::value_to<std::string>(data.at("value")));
     if (path == "appearance.font_size")

@@ -2484,15 +2484,25 @@ bool ApplyConfiguredCandidateAppearance()
 
     nlohmann::json cfg = {{"font", ResolveSystemFontFamilyForCss(GetConfiguredCandidateFont())},
                           {"english_font", ResolveSystemFontFamilyForCss(GetConfiguredCandidateEnglishFont())},
-                          {"default_font", ResolveSystemFontFamilyForCss(GetConfiguredCandidateDefaultFont())},
+                          {"fallback_fonts", GetConfiguredCandidateFallbackFontFamilies()},
                           {"font_size", GetConfiguredCandidateFontSize()},
                           {"preedit_font_size", GetConfiguredCandidateWindowPreeditFontSize()},
                           {"cand_text_color", GetConfiguredCandidateTextColor()}};
+    std::string family;
+    auto appendFont = [&](const std::string &font) {
+        // JSON quoting also escapes CSS quotes/backslashes; font names exclude control characters.
+        if (!family.empty())
+            family += ", ";
+        family += nlohmann::json(font).dump(-1, ' ', false);
+    };
+    appendFont(ResolveSystemFontFamilyForCss(GetConfiguredCandidateEnglishFont()));
+    for (const auto &font : GetConfiguredCandidateFallbackFontFamilies())
+        appendFont(font);
+    cfg["font_family"] = family + ", sans-serif";
     const std::wstring script =
         L"(function(c){"
         L"const root=document.documentElement;"
-        L"const quote=function(f){return /\\s/.test(f)?'\"'+String(f).replace(/\"/g,'\\\\\"')+'\"':String(f);};"
-        L"const family=[c.english_font,c.font,c.default_font,'sans-serif'].filter(Boolean).map(quote).join(', ');"
+        L"const family=c.font_family;"
         L"root.style.setProperty('--cand-font-family', family);"
         L"root.style.setProperty('--cand-font-size', String(c.font_size||16)+'px');"
         L"root.style.setProperty('--preedit-font-size', String(c.preedit_font_size||c.font_size||16)+'px');"
@@ -3816,6 +3826,17 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                                     PostSettingsConfig();
                                 }
                             }
+                            else if (path == "appearance.fallback_fonts")
+                            {
+                                // configUpdate accepts scalar values; structured settings use a JSON string.
+                                const auto fonts = nlohmann::json::parse(json::value_to<std::string>(data.at("value")))
+                                                       .get<std::vector<std::string>>();
+                                if (SetConfiguredCandidateFallbackFonts(fonts))
+                                {
+                                    ApplyConfiguredCandidateAppearance();
+                                    PostSettingsConfig();
+                                }
+                            }
                             else if (path == "appearance.english_font")
                             {
                                 const std::string value = json::value_to<std::string>(data.at("value"));
@@ -4544,6 +4565,8 @@ void PostSettingsConfig()
             {"page_size", GetConfiguredCandidatePageSize()},
             {"font", GetConfiguredCandidateFont()},
             {"font_css_family", ResolveSystemFontFamilyForCss(GetConfiguredCandidateFont())},
+            {"fallback_fonts", GetConfiguredCandidateFallbackFonts()},
+            {"fallback_font_css_families", GetConfiguredCandidateFallbackFontFamilies()},
             {"english_font", GetConfiguredCandidateEnglishFont()},
             {"english_font_css_family", ResolveSystemFontFamilyForCss(GetConfiguredCandidateEnglishFont())},
             {"default_font", GetConfiguredCandidateDefaultFont()},
