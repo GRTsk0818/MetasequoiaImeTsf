@@ -144,9 +144,6 @@ function applyConfigData(data: Record<string, any>, target?: string): void {
   if (typeof data?.utility?.quick_phrase === 'boolean') {
     applyToggleState('quickPhraseToggleBtn', data.utility.quick_phrase);
   }
-  if (typeof data?.utility?.date_time_mode === 'boolean') {
-    applyToggleState('dateTimeModeToggleBtn', data.utility.date_time_mode);
-  }
   if (typeof data?.utility?.emoji_mode === 'boolean') {
     applyToggleState('emojiModeToggleBtn', data.utility.emoji_mode);
   }

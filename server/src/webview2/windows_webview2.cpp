@@ -4161,14 +4161,6 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                                     PostSettingsConfig();
                                 }
                             }
-                            else if (path == "utility.date_time_mode")
-                            {
-                                const bool value = json::value_to<bool>(data.at("value"));
-                                if (SetConfiguredDateTimeModeEnabled(value))
-                                {
-                                    PostSettingsConfig();
-                                }
-                            }
                             else if (path == "utility.emoji_mode")
                             {
                                 const bool value = json::value_to<bool>(data.at("value"));
@@ -4519,7 +4511,6 @@ void PostSettingsConfig()
           {"utility",
            {{"unicode_mode", GetConfiguredUnicodeModeEnabled()},
             {"quick_phrase", GetConfiguredQuickPhraseEnabled()},
-            {"date_time_mode", GetConfiguredDateTimeModeEnabled()},
             {"emoji_mode", GetConfiguredEmojiModeEnabled()},
             {"kaomoji_mode", GetConfiguredKaomojiModeEnabled()},
             {"jianpin_mode", GetConfiguredJianpinModeEnabled()},

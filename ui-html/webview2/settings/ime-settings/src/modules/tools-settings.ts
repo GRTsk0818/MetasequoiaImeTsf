@@ -113,9 +113,6 @@ export function setupToolsSettings(): void {
   setupToggleButton('unicodeModeToggleBtn', (active) => {
     updateConfig('utility.unicode_mode', active);
   });
-  setupToggleButton('dateTimeModeToggleBtn', (active) => {
-    updateConfig('utility.date_time_mode', active);
-  });
   setupToggleButton('emojiModeToggleBtn', (active) => {
     updateConfig('utility.emoji_mode', active);
   });

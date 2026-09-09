@@ -87,7 +87,6 @@ bool g_emoji_mixed_input_enabled = false;
 bool g_kaomoji_mixed_input_enabled = false;
 bool g_unicode_mode_enabled = true;
 bool g_quick_phrase_enabled = true;
-bool g_date_time_mode_enabled = true;
 bool g_emoji_mode_enabled = true;
 bool g_kaomoji_mode_enabled = true;
 bool g_jianpin_mode_enabled = true;
@@ -746,7 +745,6 @@ bool LoadImeConfig()
         g_kaomoji_mixed_input_enabled = tbl["general"]["kaomoji_mixed_input"].value_or(false);
         g_unicode_mode_enabled = tbl["utility"]["unicode_mode"].value_or(true);
         g_quick_phrase_enabled = tbl["utility"]["quick_phrase"].value_or(true);
-        g_date_time_mode_enabled = tbl["utility"]["date_time_mode"].value_or(true);
         g_emoji_mode_enabled = tbl["utility"]["emoji_mode"].value_or(true);
         g_kaomoji_mode_enabled = tbl["utility"]["kaomoji_mode"].value_or(true);
         g_jianpin_mode_enabled = tbl["utility"]["jianpin_mode"].value_or(true);
@@ -2850,21 +2848,6 @@ bool SetConfiguredQuickPhraseEnabled(bool enabled)
         return false;
     }
     g_quick_phrase_enabled = enabled;
-    return true;
-}
-
-bool GetConfiguredDateTimeModeEnabled()
-{
-    return g_date_time_mode_enabled;
-}
-
-bool SetConfiguredDateTimeModeEnabled(bool enabled)
-{
-    if (!WriteConfiguredValue("utility", "date_time_mode", enabled ? "true" : "false"))
-    {
-        return false;
-    }
-    g_date_time_mode_enabled = enabled;
     return true;
 }
 

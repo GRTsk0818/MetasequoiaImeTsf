@@ -80,7 +80,6 @@ std::string BuildCurrentCandidatePage();
 void PrepareCandidateTranslationRequest();
 bool g_quick_phrase_triggered = false;
 bool g_unicode_mode_triggered = false;
-bool g_date_time_mode_triggered = false;
 bool g_emoji_mode_triggered = false;
 bool g_kaomoji_mode_triggered = false;
 bool g_jianpin_mode_triggered = false;
@@ -266,17 +265,16 @@ bool IsUnicodeInput(const std::string &raw)
     return index < raw.size();
 }
 
-bool IsDateTimeCompositionActive(const std::string &raw)
+// 全拼下直接键入日期/时间唤醒词（rq/riqi/date、sj/shijian/time、xq/xingqi/week，
+// 无任何模式前缀）。全小写守卫防止大写辅助码（如 "RQ"）误触发，精确匹配交给
+// 引擎的 is_date_time_keyword。双拼/五笔下这些序列可能是合法编码，因此仅在
+// Quanpin 会话且不在造词过程中拦截。
+bool IsDirectDateTimeInput(const std::string &raw)
 {
-    return g_date_time_mode_triggered && !raw.empty() && raw.front() == 'T' &&
-           std::all_of(raw.begin() + 1, raw.end(), [](unsigned char ch) { return ch >= 'a' && ch <= 'z'; });
-}
-
-bool IsDateTimeInput(const std::string &raw)
-{
-    if (!IsDateTimeCompositionActive(raw) || raw.size() <= 1)
-        return false;
-    return metasequoia::local_modes::is_date_time_keyword(raw.substr(1));
+    return g_inputSession != nullptr && g_inputSession->current_scheme_type() == SchemeType::Quanpin &&
+           !GlobalIme::composition.creating_word.active &&
+           std::all_of(raw.begin(), raw.end(), [](unsigned char ch) { return ch >= 'a' && ch <= 'z'; }) &&
+           metasequoia::local_modes::is_date_time_keyword(raw);
 }
 
 bool IsEmojiCompositionActive(const std::string &raw)
@@ -331,16 +329,14 @@ bool IsYModeInput(const std::string &raw)
 
 bool IsShiftLetterSpecialModeTriggered()
 {
-    return g_quick_phrase_triggered || g_unicode_mode_triggered || g_date_time_mode_triggered ||
-           g_emoji_mode_triggered || g_kaomoji_mode_triggered || g_jianpin_mode_triggered || g_y_mode_triggered ||
-           g_r_mode_triggered;
+    return g_quick_phrase_triggered || g_unicode_mode_triggered || g_emoji_mode_triggered ||
+           g_kaomoji_mode_triggered || g_jianpin_mode_triggered || g_y_mode_triggered || g_r_mode_triggered;
 }
 
 void ClearSpecialModeTriggers()
 {
     g_quick_phrase_triggered = false;
     g_unicode_mode_triggered = false;
-    g_date_time_mode_triggered = false;
     g_emoji_mode_triggered = false;
     g_kaomoji_mode_triggered = false;
     g_jianpin_mode_triggered = false;
@@ -348,14 +344,13 @@ void ClearSpecialModeTriggers()
     g_r_mode_triggered = false;
 }
 
-// True whenever a K/U/T/E/M/J/Y special-mode composition is in progress, even when the
+// True whenever a K/U/E/M/J/Y special-mode composition is in progress, even when the
 // typed text is not yet a complete keyword/hex sequence. Such input must never
 // be interpreted as normal pinyin.
 bool IsSpecialModeCompositionActive(const std::string &raw)
 {
-    return IsQuickPhraseCompositionActive(raw) || IsUnicodeCompositionActive(raw) || IsDateTimeCompositionActive(raw) ||
-           IsEmojiCompositionActive(raw) || IsKaomojiCompositionActive(raw) || IsJianpinCompositionActive(raw) ||
-           IsYModeCompositionActive(raw);
+    return IsQuickPhraseCompositionActive(raw) || IsUnicodeCompositionActive(raw) || IsEmojiCompositionActive(raw) ||
+           IsKaomojiCompositionActive(raw) || IsJianpinCompositionActive(raw) || IsYModeCompositionActive(raw);
 }
 
 constexpr auto kPipeHelloTimeout = std::chrono::seconds(2);
@@ -3161,9 +3156,9 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     {
         items = metasequoia::local_modes::query_quick_phrases(current_input.substr(1)).candidates;
     }
-    else if (IsDateTimeInput(current_input))
+    else if (IsDirectDateTimeInput(current_input))
     {
-        items = metasequoia::local_modes::query_date_time(current_input.substr(1));
+        items = metasequoia::local_modes::query_date_time(current_input);
     }
     else if (IsEmojiInput(current_input))
     {
@@ -3670,9 +3665,6 @@ void HandleImeKey(uint64_t client_id, uint64_t activation_epoch, uint64_t reques
     if (chinese_scheme && !g_english_input_mode && GetConfiguredUnicodeModeEnabled() && input_before_key.empty() &&
         Global::Keycode == 'U' && Global::Wch == L'U' && shift_only)
         g_unicode_mode_triggered = true;
-    if (chinese_scheme && !g_english_input_mode && GetConfiguredDateTimeModeEnabled() && input_before_key.empty() &&
-        Global::Keycode == 'T' && Global::Wch == L'T' && shift_only)
-        g_date_time_mode_triggered = true;
     if (chinese_scheme && !g_english_input_mode && GetConfiguredEmojiModeEnabled() && input_before_key.empty() &&
         Global::Keycode == 'E' && Global::Wch == L'E' && shift_only)
         g_emoji_mode_triggered = true;
@@ -3806,7 +3798,7 @@ void HandleImeKey(uint64_t client_id, uint64_t activation_epoch, uint64_t reques
         // Keep preedit identical to the typed U/+hex sequence.
         GlobalIme::composition.segmented_pinyin = GlobalIme::composition.raw_input_with_cases;
     }
-    if (!g_english_input_mode && IsDateTimeCompositionActive(GlobalIme::composition.raw_input_with_cases))
+    if (!g_english_input_mode && IsDirectDateTimeInput(GlobalIme::composition.raw_input_with_cases))
     {
         GlobalIme::composition.segmented_pinyin = GlobalIme::composition.raw_input_with_cases;
     }

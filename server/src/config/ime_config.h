@@ -236,8 +236,6 @@ bool GetConfiguredUnicodeModeEnabled();
 bool SetConfiguredUnicodeModeEnabled(bool enabled);
 bool GetConfiguredQuickPhraseEnabled();
 bool SetConfiguredQuickPhraseEnabled(bool enabled);
-bool GetConfiguredDateTimeModeEnabled();
-bool SetConfiguredDateTimeModeEnabled(bool enabled);
 bool GetConfiguredEmojiModeEnabled();
 bool SetConfiguredEmojiModeEnabled(bool enabled);
 bool GetConfiguredKaomojiModeEnabled();

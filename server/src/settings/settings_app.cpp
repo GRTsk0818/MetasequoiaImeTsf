@@ -358,7 +358,6 @@ std::wstring BuildConfigMessage(bool refresh_skin_catalog)
           {"utility",
            {{"unicode_mode", GetConfiguredUnicodeModeEnabled()},
             {"quick_phrase", GetConfiguredQuickPhraseEnabled()},
-            {"date_time_mode", GetConfiguredDateTimeModeEnabled()},
             {"emoji_mode", GetConfiguredEmojiModeEnabled()},
             {"kaomoji_mode", GetConfiguredKaomojiModeEnabled()},
             {"jianpin_mode", GetConfiguredJianpinModeEnabled()},
@@ -626,8 +625,6 @@ bool ApplyConfigUpdate(const json::object &data)
         return SetConfiguredUnicodeModeEnabled(json::value_to<bool>(data.at("value")));
     if (path == "utility.quick_phrase")
         return SetConfiguredQuickPhraseEnabled(json::value_to<bool>(data.at("value")));
-    if (path == "utility.date_time_mode")
-        return SetConfiguredDateTimeModeEnabled(json::value_to<bool>(data.at("value")));
     if (path == "utility.emoji_mode")
         return SetConfiguredEmojiModeEnabled(json::value_to<bool>(data.at("value")));
     if (path == "utility.kaomoji_mode")
