@@ -43,20 +43,29 @@ constexpr float kShadowPadRight = 18.0f;
 constexpr float kShadowPadBottom = 20.0f;
 constexpr float kToolbarGlyphFontSizeFactor = 0.82f;
 constexpr float kToolbarUnderlinedTextFontSizeFactor = 0.58f;
-constexpr wchar_t kFluentIconsFont[] = L"Segoe Fluent Icons";
+// Every toolbar icon carries a text fallback: "Segoe Fluent Icons" ships with
+// Windows 11 only, and the Windows 10 build of "Segoe MDL2 Assets" may predate
+// some of the IME-specific codepoints below. DirectWrite substitutes a font
+// silently rather than failing, so without this the button renders as a blank
+// box (issue #232).
+struct ToolbarIcon
+{
+    wchar_t codepoint;
+    const wchar_t *fallbackText;
+};
 
-constexpr wchar_t kGlyphJa = 0xE7DE;
-constexpr wchar_t kGlyphCn = 0xE982;
-constexpr wchar_t kGlyphEn = 0xE983;
-constexpr wchar_t kGlyphHalfWidth = 0xEC46;
-constexpr wchar_t kGlyphFullWidth = 0xF138;
-constexpr wchar_t kGlyphPuncEn = 0xF110;
-constexpr wchar_t kGlyphPuncCn = 0xF111;
-constexpr wchar_t kGlyphSimplified = 0xE88D;
-constexpr wchar_t kGlyphTraditional = 0xE88C;
-constexpr wchar_t kGlyphEmoji = 0xE76E;
-constexpr wchar_t kGlyphKeyboard = 0xE765;
-constexpr wchar_t kGlyphSettings = 0xE713;
+constexpr ToolbarIcon kIconJa = {0xE7DE, L"日"};
+constexpr ToolbarIcon kIconCn = {0xE982, L"中"};
+constexpr ToolbarIcon kIconEn = {0xE983, L"英"};
+constexpr ToolbarIcon kIconHalfWidth = {0xEC46, L"半"};
+constexpr ToolbarIcon kIconFullWidth = {0xF138, L"全"};
+constexpr ToolbarIcon kIconPuncEn = {0xF110, L","};
+constexpr ToolbarIcon kIconPuncCn = {0xF111, L"。"};
+constexpr ToolbarIcon kIconSimplified = {0xE88D, L"简"};
+constexpr ToolbarIcon kIconTraditional = {0xE88C, L"繁"};
+constexpr ToolbarIcon kIconEmoji = {0xE76E, L"表"};
+constexpr ToolbarIcon kIconKeyboard = {0xE765, L"键"};
+constexpr ToolbarIcon kIconSettings = {0xE713, L"设"};
 
 float ToolbarUserScale()
 {
@@ -71,7 +80,8 @@ class ToolbarIconButton : public msimeui::Visual
   public:
     using ClickHandler = std::function<void()>;
 
-    ToolbarIconButton(wchar_t glyph, std::wstring text, float size) : glyph_(glyph), text_(std::move(text)), size_(size)
+    ToolbarIconButton(wchar_t glyph, std::wstring glyphFamily, std::wstring text, float size)
+        : glyph_(glyph), glyphFamily_(std::move(glyphFamily)), text_(std::move(text)), size_(size)
     {
         SetWidth(size_);
         SetHeight(size_);
@@ -92,26 +102,6 @@ class ToolbarIconButton : public msimeui::Visual
     void SetUnderline(bool underline)
     {
         underline_ = underline;
-        InvalidateVisual();
-    }
-
-    void SetGlyph(wchar_t glyph)
-    {
-        if (glyph_ == glyph)
-        {
-            return;
-        }
-        glyph_ = glyph;
-        InvalidateVisual();
-    }
-
-    void SetLabel(std::wstring text)
-    {
-        if (text_ == text)
-        {
-            return;
-        }
-        text_ = std::move(text);
         InvalidateVisual();
     }
 
@@ -152,8 +142,8 @@ class ToolbarIconButton : public msimeui::Visual
             return;
         }
 
-        const bool useGlyph = glyph_ != 0;
-        const std::wstring family = useGlyph ? std::wstring(kFluentIconsFont) : std::wstring(msimeui::UiFontFamily());
+        const bool useGlyph = glyph_ != 0 && !glyphFamily_.empty();
+        const std::wstring family = useGlyph ? glyphFamily_ : std::wstring(msimeui::UiFontFamily());
         const float fontSize =
             size_ * (underline_ ? kToolbarUnderlinedTextFontSizeFactor : kToolbarGlyphFontSizeFactor);
         IDWriteTextFormat *format =
@@ -233,6 +223,7 @@ class ToolbarIconButton : public msimeui::Visual
 
   private:
     wchar_t glyph_ = 0;
+    std::wstring glyphFamily_;
     std::wstring text_;
     float size_ = 24.0f;
     bool underline_ = false;
@@ -427,16 +418,21 @@ void FloatingToolbarPresenter::RebuildScene()
     auto icons = std::make_shared<msimeui::HorizontalStackPanel>(gap);
     icons->SetVerticalContentAlignment(msimeui::VerticalAlignment::Center);
 
-    auto addGlyph = [&](wchar_t glyph, ToolbarIconButton::ClickHandler click) {
-        auto button = std::make_shared<ToolbarIconButton>(glyph, L"", iconSize);
+    auto addText = [&](std::wstring text, bool underline, ToolbarIconButton::ClickHandler click) {
+        auto button = std::make_shared<ToolbarIconButton>(0, L"", std::move(text), iconSize);
+        button->SetUnderline(underline);
         button->SetColors(impl_->glyph, impl_->hover);
         button->SetOnClick(std::move(click));
         icons->AddChild(button);
         return button;
     };
-    auto addText = [&](std::wstring text, bool underline, ToolbarIconButton::ClickHandler click) {
-        auto button = std::make_shared<ToolbarIconButton>(0, std::move(text), iconSize);
-        button->SetUnderline(underline);
+    auto addGlyph = [&](const ToolbarIcon &icon, ToolbarIconButton::ClickHandler click) {
+        const msimeui::IconGlyph resolved = msimeui::ResolveIconGlyph(icon.codepoint);
+        if (!resolved.family)
+        {
+            return addText(icon.fallbackText, false, std::move(click));
+        }
+        auto button = std::make_shared<ToolbarIconButton>(resolved.codepoint, resolved.family, L"", iconSize);
         button->SetColors(impl_->glyph, impl_->hover);
         button->SetOnClick(std::move(click));
         icons->AddChild(button);
@@ -462,7 +458,7 @@ void FloatingToolbarPresenter::RebuildScene()
     }
     else if (impl_->cnEn != 1)
     {
-        addGlyph(kGlyphEn, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToCn); });
+        addGlyph(kIconEn, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToCn); });
     }
     else if (impl_->englishInputMode == 1)
     {
@@ -470,11 +466,11 @@ void FloatingToolbarPresenter::RebuildScene()
     }
     else if (impl_->japaneseInputMode == 1)
     {
-        addGlyph(kGlyphJa, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToEn); });
+        addGlyph(kIconJa, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToEn); });
     }
     else
     {
-        addGlyph(kGlyphCn, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToEn); });
+        addGlyph(kIconCn, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToEn); });
     }
 
     const FloatingToolbarItemsConfig &items = GetConfiguredFloatingToolbarItems();
@@ -482,12 +478,12 @@ void FloatingToolbarPresenter::RebuildScene()
     {
         if (impl_->doubleSingleByte == 1)
         {
-            addGlyph(kGlyphFullWidth,
+            addGlyph(kIconFullWidth,
                      []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToHalfwidth); });
         }
         else
         {
-            addGlyph(kGlyphHalfWidth,
+            addGlyph(kIconHalfWidth,
                      []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToFullwidth); });
         }
     }
@@ -495,19 +491,17 @@ void FloatingToolbarPresenter::RebuildScene()
     {
         if (impl_->punctuation == 1)
         {
-            addGlyph(kGlyphPuncCn,
-                     []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToPuncEn); });
+            addGlyph(kIconPuncCn, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToPuncEn); });
         }
         else
         {
-            addGlyph(kGlyphPuncEn,
-                     []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToPuncCn); });
+            addGlyph(kIconPuncEn, []() { SendWorker(Global::DataFromServerMsgTypeToTsfWorkerThread::SwitchToPuncCn); });
         }
     }
     if (items.character_set)
     {
         const bool traditional = GetConfiguredCharacterSet() == "traditional";
-        addGlyph(traditional ? kGlyphTraditional : kGlyphSimplified, []() {
+        addGlyph(traditional ? kIconTraditional : kIconSimplified, []() {
             const std::string next = GetConfiguredCharacterSet() == "traditional" ? "simplified" : "traditional";
             if (SetConfiguredCharacterSet(next))
             {
@@ -517,15 +511,15 @@ void FloatingToolbarPresenter::RebuildScene()
     }
     if (items.emoji)
     {
-        addGlyph(kGlyphEmoji, []() { OpenEmojiPanelApplication(); });
+        addGlyph(kIconEmoji, []() { OpenEmojiPanelApplication(); });
     }
     if (items.screen_keyboard)
     {
-        addGlyph(kGlyphKeyboard, []() { OpenKeyboardPanelApplication(); });
+        addGlyph(kIconKeyboard, []() { OpenKeyboardPanelApplication(); });
     }
     if (items.settings)
     {
-        addGlyph(kGlyphSettings, []() { OpenSettingsApplication(); });
+        addGlyph(kIconSettings, []() { OpenSettingsApplication(); });
     }
 
     row->AddChild(leading);

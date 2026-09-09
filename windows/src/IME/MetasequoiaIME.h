@@ -70,6 +70,9 @@ class CMetasequoiaIME : public ITfTextInputProcessorEx,
 {
     friend class CCompositionProcessorEngine;
     friend class CKeyHandlerEditSession;
+    // Needs _IsComposing() to tell a host's transient context-view teardown apart
+    // from a real end of composition.
+    friend class CCandidateListUIPresenter;
 
   public:
     CMetasequoiaIME();
