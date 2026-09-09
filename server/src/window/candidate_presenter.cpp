@@ -823,6 +823,19 @@ void CandidatePresenter::ShowFromGlobalState(POINT caret)
     {
         return;
     }
+    // A composition can start before the host reports a usable text extent
+    // (first focus, or resuming after a long idle). The caret then arrives as
+    // (0, INVALID_Y), which placement would clamp into the monitor's work area.
+    // Hide even an already-visible host until a real anchor arrives. Preserve
+    // the show request so MoveCandidate / the settle timer can place it later.
+    if (caret.y == Global::INVALID_Y)
+    {
+        CloseContextMenu(false);
+        SetCandidateHostCloaked(true);
+        ::is_global_wnd_cand_shown = true;
+        CAND_DIAG_LOGF(L"candidate-d2d show deferred: no usable caret anchor ({},{})", caret.x, caret.y);
+        return;
+    }
     CloseContextMenu(false);
     ApplySkin();
     std::wstring preedit;
