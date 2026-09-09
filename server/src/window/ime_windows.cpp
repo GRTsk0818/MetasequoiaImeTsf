@@ -2407,7 +2407,10 @@ LRESULT CALLBACK WndProcCandWindow(HWND hwnd, UINT message, WPARAM wParam, LPARA
         const bool forceLayout = g_candidate_force_layout.exchange(false);
         const POINT layoutCaret = GetCandidateLayoutCaret();
         const bool sameCaret = g_last_placed_caret_x == layoutCaret.x && g_last_placed_caret_y == layoutCaret.y;
-        if (!forceLayout && !GetConfiguredCandidateWindowFollowCursor())
+        // Position locking applies only after the first usable anchor has been
+        // placed. A deferred show still needs its first valid MoveCandidate.
+        const bool awaitingInitialPlacement = g_last_placed_caret_y == Global::INVALID_Y;
+        if (!forceLayout && !GetConfiguredCandidateWindowFollowCursor() && !awaitingInitialPlacement)
         {
             CAND_DIAG_LOGF(L"candidate-position move-ignored locked_anchor=({},{}) reported=({},{})", layoutCaret.x,
                            layoutCaret.y, Global::Point[0], Global::Point[1]);
