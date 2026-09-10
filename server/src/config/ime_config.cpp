@@ -59,6 +59,7 @@ int g_candidate_page_size = 8;
 std::string g_candidate_font = "Noto Sans SC";
 std::string g_candidate_english_font = "Segoe UI";
 std::string g_candidate_default_font = "Microsoft YaHei";
+std::vector<std::string> g_candidate_fallback_fonts = {"Noto Sans SC", "Microsoft YaHei"};
 int g_candidate_font_size = 16;
 int g_candidate_window_preedit_font_size = 16;
 std::atomic_bool g_diagnostic_log_enabled{false};
@@ -314,6 +315,8 @@ size_t FindTomlValueEnd(const std::string &line, size_t value_begin)
     return end;
 }
 
+size_t FindTomlValueEndInText(const std::string &text, size_t value_begin);
+
 bool ReplaceTomlValuePreservingFormatting(std::string &text, const std::string &section, const std::string &key,
                                           const std::string &replacement)
 {
@@ -341,8 +344,9 @@ bool ReplaceTomlValuePreservingFormatting(std::string &text, const std::string &
                 {
                     return false;
                 }
-                const size_t value_end = FindTomlValueEnd(line, value_begin);
-                text.replace(line_begin + value_begin, value_end - value_begin, replacement);
+                const size_t absolute_begin = line_begin + value_begin;
+                const size_t value_end = FindTomlValueEndInText(text, absolute_begin);
+                text.replace(absolute_begin, value_end - absolute_begin, replacement);
                 return true;
             }
         }
@@ -436,6 +440,26 @@ bool WriteFileTextAtomically(const std::filesystem::path &path, const std::strin
 // 与 FindTomlValueEnd 相同，但值可以跨行（ai_assistant.prompt 用的是 """ 多行字符串）。
 size_t FindTomlValueEndInText(const std::string &text, size_t value_begin)
 {
+    if (value_begin < text.size() && text[value_begin] == '[')
+    {
+        int depth = 1;
+        for (size_t i = value_begin + 1; i < text.size(); ++i)
+        {
+            if (text[i] == '"' || text[i] == '\'')
+                i = FindTomlValueEndInText(text, i) - 1;
+            else if (text[i] == '#')
+            {
+                i = text.find('\n', i);
+                if (i == std::string::npos)
+                    return text.size();
+            }
+            else if (text[i] == '[')
+                ++depth;
+            else if (text[i] == ']' && --depth == 0)
+                return i + 1;
+        }
+        return text.size();
+    }
     for (const char *delimiter : {"\"\"\"", "'''"})
     {
         if (value_begin + 3 > text.size() || text.compare(value_begin, 3, delimiter) != 0)
@@ -525,10 +549,18 @@ std::map<std::string, std::string> ParseTomlAssignments(const std::string &text)
 }
 
 // 以新模板为骨架（注释、分节顺序、新增项都来自新版），只把用户改过的值填回去。
-std::string MergeTomlIntoTemplate(const std::string &template_text,
-                                  const std::map<std::string, std::string> &user_values,
+std::string MergeTomlIntoTemplate(const std::string &template_text, std::map<std::string, std::string> user_values,
                                   const std::map<std::string, std::string> &baseline_values)
 {
+    const auto fallback_id = MakeTomlAssignmentId("appearance", "fallback_fonts");
+    if (!user_values.empty() && user_values.find(fallback_id) == user_values.end())
+    {
+        const auto font = user_values.find(MakeTomlAssignmentId("appearance", "font"));
+        const auto default_font = user_values.find(MakeTomlAssignmentId("appearance", "default_font"));
+        user_values[fallback_id] = "[" + (font == user_values.end() ? "\"Noto Sans SC\"" : font->second) + ", " +
+                                   (default_font == user_values.end() ? "\"Microsoft YaHei\"" : default_font->second) +
+                                   "]";
+    }
     struct ValuePatch
     {
         size_t begin;
@@ -651,6 +683,25 @@ bool LoadImeConfig()
         g_candidate_default_font = tbl["appearance"]["default_font"].value_or(std::string("Microsoft YaHei"));
         if (g_candidate_default_font.empty())
             g_candidate_default_font = "Microsoft YaHei";
+        // Absence means an old profile; an explicit empty array means system fallback only.
+        g_candidate_fallback_fonts = {g_candidate_font, g_candidate_default_font};
+        if (const auto *fonts = tbl["appearance"]["fallback_fonts"].as_array())
+        {
+            g_candidate_fallback_fonts.clear();
+            for (const auto &node : *fonts)
+            {
+                if (auto font = node.value<std::string>();
+                    font && !font->empty() && font->size() <= 256 &&
+                    !std::any_of(font->begin(), font->end(), [](unsigned char ch) { return ch < 32 || ch == 127; }) &&
+                    std::find(g_candidate_fallback_fonts.begin(), g_candidate_fallback_fonts.end(), *font) ==
+                        g_candidate_fallback_fonts.end())
+                {
+                    g_candidate_fallback_fonts.push_back(*font);
+                    if (g_candidate_fallback_fonts.size() == 32)
+                        break;
+                }
+            }
+        }
         {
             const int font_size = tbl["appearance"]["font_size"].value_or(16);
             g_candidate_font_size =
@@ -1385,6 +1436,44 @@ bool SetConfiguredCandidateDefaultFont(const std::string &font)
 int GetConfiguredCandidateFontSize()
 {
     return g_candidate_font_size;
+}
+
+const std::vector<std::string> &GetConfiguredCandidateFallbackFonts()
+{
+    return g_candidate_fallback_fonts;
+}
+
+std::vector<std::string> GetConfiguredCandidateFallbackFontFamilies()
+{
+    std::vector<std::string> families;
+    for (const auto &font : g_candidate_fallback_fonts)
+        families.push_back(ResolveSystemFontFamilyForCss(font));
+    return families;
+}
+
+bool SetConfiguredCandidateFallbackFonts(const std::vector<std::string> &fonts)
+{
+    if (fonts.size() > 32)
+        return false;
+    std::vector<std::string> normalized;
+    std::string value = "[";
+    for (const auto &font : fonts)
+    {
+        if (font.empty() || font.size() > 256 ||
+            std::any_of(font.begin(), font.end(), [](unsigned char ch) { return ch < 32 || ch == 127; }))
+            return false;
+        if (std::find(normalized.begin(), normalized.end(), font) != normalized.end())
+            continue;
+        if (!normalized.empty())
+            value += ", ";
+        value += EscapeTomlBasicString(font);
+        normalized.push_back(font);
+    }
+    value += "]";
+    if (!WriteConfiguredValue("appearance", "fallback_fonts", value))
+        return false;
+    g_candidate_fallback_fonts = std::move(normalized);
+    return true;
 }
 
 bool SetConfiguredCandidateFontSize(int font_size)

@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include <filesystem>
+#include <algorithm>
 #include <string>
 #include <system_error>
 
@@ -75,6 +76,21 @@ TEST_CASE(config_round_trips_under_non_ascii_profile_path)
         InitImeConfig();
         REQUIRE_EQ(GetConfiguredInputMode(), std::string("japanese"));
         REQUIRE_EQ(GetConfiguredInputSchemeName(), std::string("wubi"));
+
+        const std::vector<std::string> fonts = {"SimSun", "Font#1", "Font]2", "Font\\\"3", "微软雅黑"};
+        REQUIRE(SetConfiguredCandidateFallbackFonts(fonts));
+        InitImeConfig();
+        REQUIRE(GetConfiguredCandidateFallbackFonts() == fonts);
+        auto reordered = fonts;
+        std::reverse(reordered.begin(), reordered.end());
+        REQUIRE(SetConfiguredCandidateFallbackFonts(reordered));
+        InitImeConfig();
+        REQUIRE(GetConfiguredCandidateFallbackFonts() == reordered);
+        REQUIRE(!SetConfiguredCandidateFallbackFonts({"bad\nfont"}));
+        REQUIRE(GetConfiguredCandidateFallbackFonts() == reordered);
+        REQUIRE(SetConfiguredCandidateFallbackFonts({}));
+        InitImeConfig();
+        REQUIRE(GetConfiguredCandidateFallbackFonts().empty());
     }
 
     fs::remove_all(unique_root, ec);

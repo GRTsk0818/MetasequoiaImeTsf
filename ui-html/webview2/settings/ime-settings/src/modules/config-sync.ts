@@ -43,6 +43,8 @@ function applyConfigData(data: Record<string, any>, target?: string): void {
         },
         {
           font: data?.appearance?.font,
+          fallback_fonts: data?.appearance?.fallback_fonts,
+          fallback_font_css_families: data?.appearance?.fallback_font_css_families,
           font_css_family: data?.appearance?.font_css_family,
           english_font: data?.appearance?.english_font,
           english_font_css_family: data?.appearance?.english_font_css_family,

@@ -307,6 +307,9 @@ void CandidatePresenter::ApplySkin()
     fingerprint << skinId << '|' << GetConfiguredThemeCand() << '|' << GetConfiguredCandidateFont() << '|'
                 << GetConfiguredCandidateFontSize() << '|' << GetConfiguredCandidateWindowPreeditFontSize() << '|'
                 << GetConfiguredCandidateWindowLayout() << '|' << GetConfiguredCandidateTextColor();
+    fingerprint << '|' << GetConfiguredCandidateEnglishFont();
+    for (const auto &font : GetConfiguredCandidateFallbackFonts())
+        fingerprint << '|' << font.size() << ':' << font;
     const std::string skinKey = fingerprint.str();
     if (skinKey == lastSkinFingerprint_ && impl_->card)
     {
@@ -395,6 +398,9 @@ void CandidatePresenter::ApplySkin()
     const float fontSize = static_cast<float>((std::max)(12, GetConfiguredCandidateFontSize()));
     const float preeditSize = static_cast<float>((std::max)(12, GetConfiguredCandidateWindowPreeditFontSize()));
     msimeui::CandidateList::Appearance appearance;
+    appearance.fontFamily = string_to_wstring(ResolveSystemFontFamilyForCss(GetConfiguredCandidateEnglishFont()));
+    for (const auto &font : GetConfiguredCandidateFallbackFontFamilies())
+        appearance.fallbackFontFamilies.push_back(string_to_wstring(font));
     appearance.itemHeight = fontSize * 1.35f + 2.0f;
     appearance.itemGap = 2.0f;
     appearance.fontSize = fontSize;
@@ -423,7 +429,8 @@ void CandidatePresenter::ApplySkin()
     impl_->list->SetOrientation(GetConfiguredCandidateWindowLayout() == "horizontal"
                                     ? msimeui::CandidateList::Orientation::Horizontal
                                     : msimeui::CandidateList::Orientation::Vertical);
-    impl_->preedit->SetFontFamily(theme.textInputFontFamily);
+    impl_->preedit->SetFontFamily(appearance.fontFamily);
+    impl_->preedit->SetFallbackFontFamilies(appearance.fallbackFontFamilies);
     impl_->preedit->SetFontSize(preeditSize);
     impl_->preedit->SetColor(theme.textPrimary);
     impl_->preedit->SetCaretColor(tokens.accent);
