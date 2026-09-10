@@ -921,6 +921,14 @@ std::string BuildCurrentCandidatePage()
 
         CandidateViewItem view;
         view.text = word;
+        if (!item.corrected_from.empty())
+        {
+            // Correction-sourced candidates carry a light visible marker (PRD R5/AC7).
+            // Only the display text is touched: commits, word frequency updates and
+            // pinned-position lookups read item.word / page_words and must never see
+            // the marker suffix.
+            view.text += "*";
+        }
         if (item.source == CandidateSource::Generated && show_helpcodes)
         {
             // Generated whole-sentence candidates carry the raw spelling in
