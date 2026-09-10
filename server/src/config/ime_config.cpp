@@ -420,31 +420,63 @@ std::string ReadFileText(const std::filesystem::path &path)
     return std::string((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
 }
 
+void ClearReadOnlyAttribute(const std::filesystem::path &path)
+{
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_READONLY) == 0)
+    {
+        return;
+    }
+    SetFileAttributesW(path.c_str(), attributes & ~FILE_ATTRIBUTE_READONLY);
+}
+
+bool WriteFileBytes(const std::filesystem::path &path, const std::string &text)
+{
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output)
+    {
+        return false;
+    }
+    output.write(text.data(), static_cast<std::streamsize>(text.size()));
+    output.close();
+    return static_cast<bool>(output);
+}
+
 bool WriteFileTextAtomically(const std::filesystem::path &path, const std::string &text)
 {
     std::filesystem::path temp_path = path;
-    temp_path += ".tmp";
+    temp_path += L".tmp";
+    ClearReadOnlyAttribute(path);
+    ClearReadOnlyAttribute(temp_path);
+    if (!WriteFileBytes(temp_path, text))
     {
-        std::ofstream output(temp_path, std::ios::binary | std::ios::trunc);
-        if (!output)
-        {
-            return false;
-        }
-        output.write(text.data(), static_cast<std::streamsize>(text.size()));
-        output.close();
-        if (!output)
-        {
-            return false;
-        }
-    }
-    std::error_code error;
-    std::filesystem::rename(temp_path, path, error);
-    if (error)
-    {
-        std::filesystem::remove(temp_path, error);
         return false;
     }
-    return true;
+    if (MoveFileExW(temp_path.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+    {
+        return true;
+    }
+    const bool replaced = WriteFileBytes(path, text);
+    std::error_code error;
+    std::filesystem::remove(temp_path, error);
+    return replaced;
+}
+
+bool TomlTextIsParseable(const std::string &text)
+{
+    if (text.empty())
+    {
+        return false;
+    }
+    try
+    {
+        (void)toml::parse(text);
+        return true;
+    }
+    catch (const toml::parse_error &)
+    {
+        return false;
+    }
 }
 
 // 与 FindTomlValueEnd 相同，但值可以跨行（ai_assistant.prompt 用的是 """ 多行字符串）。
@@ -604,7 +636,72 @@ std::string MergeTomlIntoTemplate(const std::string &template_text, std::map<std
     return merged;
 }
 
-// 升级后把用户配置迁移到新版模板上：保留用户改过的值，带入新增项，丢掉废弃项。
+std::filesystem::path AcpDecodedUtf8Path(const std::filesystem::path &wide_path)
+{
+    try
+    {
+        return std::filesystem::path(wide_path.u8string());
+    }
+    catch (...)
+    {
+        return {};
+    }
+}
+
+void RecoverLegacyAcpMangledConfig()
+{
+    const std::filesystem::path data_dir = g_config_path.parent_path();
+    const std::filesystem::path mangled_dir = AcpDecodedUtf8Path(data_dir);
+    if (mangled_dir.empty() || mangled_dir == data_dir)
+    {
+        return;
+    }
+
+    const std::filesystem::path mangled_config = mangled_dir / L"config.toml";
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(mangled_config, error))
+    {
+        return;
+    }
+
+    const std::string mangled_text = ReadFileText(mangled_config);
+    if (!TomlTextIsParseable(mangled_text))
+    {
+        return;
+    }
+
+    ConfigFileLock lock;
+    if (!lock)
+    {
+        return;
+    }
+
+    const std::string real_text = ReadFileText(g_config_path);
+    const std::string template_text = ReadFileText(data_dir / kConfigTemplateFileName);
+    const bool real_unusable = !TomlTextIsParseable(real_text);
+    const bool real_is_stock = !template_text.empty() && real_text == template_text;
+    const bool real_never_saved = !std::filesystem::is_regular_file(data_dir / kConfigBaselineFileName, error);
+    if (!real_unusable && !real_is_stock && !real_never_saved)
+    {
+        return;
+    }
+
+    if (!WriteFileTextAtomically(g_config_path, mangled_text))
+    {
+        return;
+    }
+
+    const std::filesystem::path mangled_baseline = mangled_dir / kConfigBaselineFileName;
+    if (std::filesystem::is_regular_file(mangled_baseline, error))
+    {
+        const std::string baseline_text = ReadFileText(mangled_baseline);
+        if (!baseline_text.empty())
+        {
+            WriteFileTextAtomically(data_dir / kConfigBaselineFileName, baseline_text);
+        }
+    }
+}
+
 void SyncConfigWithInstalledTemplate()
 {
     const std::filesystem::path data_dir = g_config_path.parent_path();
@@ -622,9 +719,17 @@ void SyncConfigWithInstalledTemplate()
     }
 
     const std::filesystem::path baseline_path = data_dir / kConfigBaselineFileName;
-    std::error_code error;
-    if (!std::filesystem::exists(g_config_path, error))
+    std::error_code exists_error;
+    const bool config_exists = std::filesystem::is_regular_file(g_config_path, exists_error);
+    const auto config_size =
+        config_exists ? std::filesystem::file_size(g_config_path, exists_error) : std::uintmax_t{0};
+    const std::string user_text = ReadFileText(g_config_path);
+    if (!TomlTextIsParseable(user_text))
     {
+        if (config_exists && config_size > 0 && user_text.empty())
+        {
+            return;
+        }
         if (WriteFileTextAtomically(g_config_path, template_text))
         {
             WriteFileTextAtomically(baseline_path, template_text);
@@ -638,15 +743,10 @@ void SyncConfigWithInstalledTemplate()
         return;
     }
 
-    const std::string merged = MergeTomlIntoTemplate(template_text, ParseTomlAssignments(ReadFileText(g_config_path)),
-                                                     ParseTomlAssignments(baseline_text));
-    try
+    const std::string merged =
+        MergeTomlIntoTemplate(template_text, ParseTomlAssignments(user_text), ParseTomlAssignments(baseline_text));
+    if (!TomlTextIsParseable(merged))
     {
-        (void)toml::parse(merged);
-    }
-    catch (const toml::parse_error &)
-    {
-        // 合并结果无法解析时保留原配置，宁可少一批新默认值也不能弄坏用户的设置。
         return;
     }
 
@@ -1094,13 +1194,23 @@ bool WriteConfiguredValues(std::initializer_list<ConfigValueUpdate> updates)
     ConfigFileLock lock;
     if (!lock)
         return false;
-    std::ifstream input(g_config_path, std::ios::binary);
-    if (!input)
+    std::error_code exists_error;
+    const bool config_exists = std::filesystem::is_regular_file(g_config_path, exists_error);
+    const auto config_size =
+        config_exists ? std::filesystem::file_size(g_config_path, exists_error) : std::uintmax_t{0};
+    std::string text = ReadFileText(g_config_path);
+    if (!TomlTextIsParseable(text))
     {
-        return false;
+        if (config_exists && config_size > 0 && text.empty())
+        {
+            return false;
+        }
+        text = ReadFileText(g_config_path.parent_path() / kConfigTemplateFileName);
+        if (!TomlTextIsParseable(text))
+        {
+            return false;
+        }
     }
-    std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-    input.close();
 
     for (const auto &update : updates)
     {
@@ -1317,6 +1427,8 @@ void InitImeConfig()
     g_config_path = std::filesystem::path(CommonUtils::get_ime_data_path_w()) / L"config.toml";
     std::error_code create_error;
     std::filesystem::create_directories(g_config_path.parent_path(), create_error);
+    CommonUtils::ensure_ime_data_writable();
+    RecoverLegacyAcpMangledConfig();
     SyncConfigWithInstalledTemplate();
     if (LoadImeConfig())
     {

@@ -186,7 +186,7 @@ void ApplyPackageColors(const CandidateSkinCatalog::CandidateColors &colors, Can
 
 std::wstring AssetRoot()
 {
-    return string_to_wstring(CommonUtils::get_local_appdata_path()) + L"\\" + GlobalIme::AppName;
+    return CommonUtils::get_ime_data_path_w();
 }
 
 constexpr float kShadowPadLeft = 32.0f;

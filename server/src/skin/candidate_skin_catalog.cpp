@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <fstream>
+#include <iterator>
 #include <system_error>
 
 namespace CandidateSkinCatalog
@@ -187,7 +189,14 @@ std::optional<Package> Load(const std::filesystem::path &skinsRoot, const std::s
     const std::filesystem::path manifest = directory / L"skin.toml";
     try
     {
-        const toml::table root = toml::parse_file(manifest.string());
+        std::ifstream input(manifest, std::ios::binary);
+        if (!input)
+        {
+            SetError(error, "缺少或无法解析 skin.toml");
+            return std::nullopt;
+        }
+        const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        const toml::table root = toml::parse(text);
         if (root["schema_version"].value_or(0) != 1)
         {
             SetError(error, "仅支持 schema_version 1");
