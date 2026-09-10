@@ -189,6 +189,19 @@ quanpin_helpcode_schema = "ziranma"
 show_qp_helpcode_in_candidate_window = false
 
 #
+# Quanpin
+# 全拼
+#
+[quanpin]
+# 全拼自动纠错：遇到按键窜乱时自动按最接近的正确拼音查询候选。
+# 仅当输入串不是合法拼音组合时触发，不影响正常输入；两个类型默认关闭，
+# 可在设置页分别开启。旧的单键 autocorrect 已废弃，不再读取。
+# 相邻字母顺序打错时纠正（如 sahng → shang）。
+autocorrect_transposition = false
+# 误触相邻按键时纠正（如 shabg → shang）。
+autocorrect_neighbor = false
+
+#
 # Keybindings
 # 快捷键
 #
