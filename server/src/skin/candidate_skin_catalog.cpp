@@ -196,11 +196,11 @@ std::optional<Package> Load(const std::filesystem::path &skinsRoot, const std::s
         std::ifstream input(manifest, std::ios::binary);
         if (!input)
         {
-            SetError(error, "无法读取 skin.toml");
+            SetError(error, "缺少或无法解析 skin.toml");
             return std::nullopt;
         }
-        const std::string manifest_text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-        const toml::table root = toml::parse(manifest_text);
+        const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        const toml::table root = toml::parse(text);
         if (root["schema_version"].value_or(0) != 1)
         {
             SetError(error, "仅支持 schema_version 1");
