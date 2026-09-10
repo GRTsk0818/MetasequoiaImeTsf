@@ -189,6 +189,10 @@ std::optional<Package> Load(const std::filesystem::path &skinsRoot, const std::s
     const std::filesystem::path manifest = directory / L"skin.toml";
     try
     {
+        // Read via the wide path and parse the text. toml::parse_file(manifest.string()) would run the
+        // path through the ANSI code page: skins live under the user profile, so a non-ASCII (e.g.
+        // Chinese) user name corrupts it, and on a code page that cannot represent the characters
+        // path::string() throws right past this try block's toml handlers.
         std::ifstream input(manifest, std::ios::binary);
         if (!input)
         {
