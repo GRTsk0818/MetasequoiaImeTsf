@@ -270,6 +270,29 @@ bool IsOtherKeyboardKeyDown()
     return false;
 }
 
+// Global::IsShiftKeyDownOnly and friends are derived from GetKeyState(), which
+// reports the modifier state as of the message the calling thread last pulled
+// from its queue.  Hosts that call into ITfKeystrokeMgr outside that dispatch
+// -- Word is the known offender -- can therefore hand us a Shift event whose
+// GetKeyState() snapshot still describes the previous keystroke.  Bare-modifier
+// arming must not depend on that; GetAsyncKeyState() reads the real keyboard.
+bool IsOnlyModifierPhysicallyDown(UINT keptDownVk)
+{
+    static const UINT kModifiers[] = {VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN};
+    for (const UINT modifier : kModifiers)
+    {
+        if (modifier == keptDownVk)
+        {
+            continue;
+        }
+        if ((GetAsyncKeyState(modifier) & 0x8000) != 0)
+        {
+            return false;
+        }
+    }
+    return (GetAsyncKeyState(keptDownVk) & 0x8000) != 0;
+}
+
 void ClearReleasedShiftModifierState()
 {
     if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0)
@@ -286,7 +309,15 @@ void ClearReleasedShiftModifierState()
 
 void CMetasequoiaIME::_InitBareShiftKeyboardHook()
 {
-    if (_bareShiftHook != nullptr || _bareShiftHookOwner != nullptr)
+    // Restricted to mintty on purpose.  mintty routes composition over the
+    // legacy IMM bridge and never offers a bare modifier key-up to
+    // ITfKeyEventSink at all, so there is no sink event to work with.  Hosts
+    // that merely report a stale GetKeyState() alongside the release (Word) are
+    // handled in the sink instead -- see _MatchModifierReleaseHotkey.  Neither
+    // Weasel nor WindInput installs a keyboard hook for this, and windows/
+    // AGENTS.md asks that hooks in the injected DLL stay the exception.
+    if (_bareShiftHook != nullptr || _bareShiftHookOwner != nullptr ||
+        CompareStringOrdinal(Global::current_process_name.c_str(), -1, L"mintty.exe", -1, TRUE) != CSTR_EQUAL)
     {
         return;
     }
@@ -456,14 +487,14 @@ void CMetasequoiaIME::_TrackModifierHotkeyArming(WPARAM wParam, LPARAM lParam, b
     }
 
     const auto now = std::chrono::steady_clock::now();
-    if (isShift && Global::IsShiftKeyDownOnly)
+    if (isShift && IsOnlyModifierPhysicallyDown(VK_SHIFT))
     {
         _shiftHotkeyArmed = true;
         _ctrlHotkeyArmed = false;
         _modifierHotkeyExpire = now + kModifierHotkeyToggleLimit;
         return;
     }
-    if (isCtrl && Global::IsControlKeyDownOnly)
+    if (isCtrl && IsOnlyModifierPhysicallyDown(VK_CONTROL))
     {
         _ctrlHotkeyArmed = true;
         _shiftHotkeyArmed = false;
@@ -517,7 +548,12 @@ bool CMetasequoiaIME::_MatchModifierReleaseHotkey(WPARAM wParam, _Out_ GUID *hot
     const auto now = std::chrono::steady_clock::now();
     const auto hotkeys = FanyUtils::ReadConfiguredSwitchLanguageHotkeys();
 
-    if (IsShiftVk(code) && _shiftHotkeyArmed && Global::PureShiftKeyUp)
+    // _shiftHotkeyArmed already encodes "this Shift went down alone and nothing
+    // else has been pressed since" -- _TrackModifierHotkeyArming disarms on any
+    // other key-down.  Matching on the released virtual key plus that latch is
+    // enough, and unlike Global::PureShiftKeyUp it does not require the host's
+    // GetKeyState() snapshot to have caught up with the release.
+    if (IsShiftVk(code) && _shiftHotkeyArmed)
     {
         const bool fire = now < _modifierHotkeyExpire && hotkeys.shift;
         _shiftHotkeyArmed = false;
@@ -530,7 +566,7 @@ bool CMetasequoiaIME::_MatchModifierReleaseHotkey(WPARAM wParam, _Out_ GUID *hot
         return false;
     }
 
-    if (IsControlVk(code) && _ctrlHotkeyArmed && Global::IsControlKeyDownOnly)
+    if (IsControlVk(code) && _ctrlHotkeyArmed)
     {
         const bool fire = now < _modifierHotkeyExpire && hotkeys.ctrl;
         _shiftHotkeyArmed = false;
@@ -2315,8 +2351,10 @@ STDAPI CMetasequoiaIME::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM 
     {
         // TSF does not call OnKeyUp after a FALSE test result. Claim and
         // queue the bare-Shift toggle here while leaving its release visible.
-        // Hosts that never route the release here (Word, mintty) fall back to
-        // the bare-Shift keyboard hook, which _MarkBareShiftHandled() disarms.
+        // Whichever of TestKeyUp/KeyUp a host offers first wins;
+        // _MatchModifierReleaseHotkey disarms so the other one is a no-op.
+        // mintty offers neither and falls back to the keyboard hook, which
+        // _MarkBareShiftHandled() disarms.
         GUID hotkeyGuid = {};
         BOOL queued = FALSE;
         const bool toggled =

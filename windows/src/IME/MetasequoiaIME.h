@@ -375,15 +375,15 @@ class CMetasequoiaIME : public ITfTextInputProcessorEx,
     bool _MatchModifierReleaseHotkey(WPARAM wParam, _Out_ GUID *hotkeyGuid);
     bool _QueueInputHotkey(_In_ ITfContext *pContext, REFGUID hotkeyGuid, _Out_ BOOL *pIsEaten);
 
-    // Not every host completes a bare-Shift release through ITfKeyEventSink:
-    // mintty routes composition over the legacy IMM bridge and drops bare
-    // modifier key-ups, and Word does not deliver them either. Since the
-    // release must be reported uneaten (JetBrains double-Shift depends on
-    // seeing it), OnTestKeyUp cannot rely on a follow-up OnKeyUp. Observe only
-    // this host thread and feed a missed bare-Shift release back into the
-    // normal deferred hotkey path. _MarkBareShiftHandled() latches the presses
-    // the key-event sink already toggled, so hosts that do deliver the release
-    // never toggle twice.
+    // mintty routes composition over the legacy IMM bridge and never offers a
+    // bare modifier key-up to ITfKeyEventSink, so there is no sink event to
+    // hang the toggle on. Observe only this host thread and feed the missed
+    // bare-Shift release back into the normal deferred hotkey path.
+    // _MarkBareShiftHandled() latches the presses the key-event sink already
+    // toggled, so a host that does deliver the release never toggles twice.
+    // Keep this mintty-only: hosts whose problem is a stale GetKeyState()
+    // rather than a missing callback are handled in the sink, and windows/
+    // AGENTS.md asks that hooks in the injected DLL stay the exception.
     void _InitBareShiftKeyboardHook();
     void _UninitBareShiftKeyboardHook();
     void _HandleHookedBareShiftRelease(UINT sequence);
