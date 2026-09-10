@@ -361,9 +361,11 @@ var
   AppDataPath: String;
   ResultCode: Integer;
 begin
-  { Elevated setup writes {localappdata} as high integrity. Medium-IL Server
-    and Settings cannot replace those files. Users who never rewrote config.toml
-    at the real path (the non-ASCII path bug) keep that leftover and cannot save. }
+  // Elevated setup writes {localappdata} as high integrity. Medium-IL Server
+  // and Settings cannot replace those files. Users who never rewrote config.toml
+  // at the real path (the non-ASCII path bug) keep that leftover and cannot save.
+  // Note: brace comments do not nest in Inno Setup, so a constant like the one
+  // above would close a { } comment early -- keep these as line comments.
   AppDataPath := ExpandConstant('{localappdata}\metasequoiaime');
   ForceDirectories(AppDataPath);
   Exec(
