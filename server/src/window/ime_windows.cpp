@@ -1821,7 +1821,7 @@ void ApplyConfiguredFloatingToolbarSize()
 {
     if (FloatingToolbarPresenter::Instance().IsBound())
     {
-        FloatingToolbarPresenter::Instance().RelayoutHost();
+        FloatingToolbarPresenter::Instance().ApplyAppearance();
         return;
     }
     ::FTB_WND_WIDTH = ConfiguredFloatingToolbarWidth();
