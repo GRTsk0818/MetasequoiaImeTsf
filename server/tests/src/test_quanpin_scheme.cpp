@@ -519,20 +519,23 @@ TEST_CASE(QuanpinAutocorrectTableHasNoCollisionsWithLegalPinyin)
 {
     const auto &legal = quanpin::intact_pinyin_set();
     std::unordered_set<std::string> wrong_keys;
-    for (const auto *table : {&quanpin::autocorrect::kTranspositionEntries, &quanpin::autocorrect::kNeighborEntries})
-    {
-        for (const auto &entry : *table)
+    // 两张表的数组长度不同，初始化列表推导不出共同的指针类型（VS2022 严格报错）；
+    // 用边界对遍历代替指针到数组的推导。
+    const auto require_valid_entries = [&](const quanpin::autocorrect::Entry *entries, std::size_t count) {
+        for (std::size_t i = 0; i < count; ++i)
         {
-            const std::string wrong(entry.wrong);
+            const std::string wrong(entries[i].wrong);
             REQUIRE(!wrong.empty());
             // 2-letter strings belong to the jianpin space: a correction key there
             // would shadow abbreviations such as wj -> 文件.
             REQUIRE(wrong.size() >= 3);
             REQUIRE(!legal.count(wrong));             // a key must never shadow a legal syllable
-            REQUIRE(legal.count(entry.correct));      // the correction must be a legal syllable
+            REQUIRE(legal.count(entries[i].correct)); // the correction must be a legal syllable
             REQUIRE(wrong_keys.insert(wrong).second); // keys must be unique across both tables
         }
-    }
+    };
+    require_valid_entries(quanpin::autocorrect::kTranspositionEntries, quanpin::autocorrect::kTranspositionCount);
+    require_valid_entries(quanpin::autocorrect::kNeighborEntries, quanpin::autocorrect::kNeighborCount);
     REQUIRE(wrong_keys.size() > 1000);
 }
 
@@ -604,7 +607,7 @@ TEST_CASE(QuanpinAutocorrectCutRejectsInputsOutOfScope)
 {
     const unsigned both = quanpin::kAutocorrectTransposition | quanpin::kAutocorrectNeighbor;
     // The mask short-circuits before any table lookup.
-    REQUIRE(quanpin::autocorrect_cut("shang", none).empty());
+    REQUIRE(quanpin::autocorrect_cut("shang", 0u).empty());
     // Legal input: the caller must only invoke autocorrect when the correction
     // cut already failed, so a fully legal spelling yields no correction.
     REQUIRE(quanpin::autocorrect_cut("shang", both).empty());
