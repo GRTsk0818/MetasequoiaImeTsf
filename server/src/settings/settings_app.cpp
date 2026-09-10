@@ -463,7 +463,10 @@ std::wstring BuildConfigMessage(bool refresh_skin_catalog)
             {"quanpin_helpcode", GetConfiguredQuanpinHelpcodeEnabled()},
             {"quanpin_helpcode_schema", GetConfiguredQuanpinHelpcodeSchema()},
             {"show_sp_helpcode_in_candidate_window", GetConfiguredShowShuangpinHelpcodeInCandidateWindow()},
-            {"show_qp_helpcode_in_candidate_window", GetConfiguredShowQuanpinHelpcodeInCandidateWindow()}}}}}};
+            {"show_qp_helpcode_in_candidate_window", GetConfiguredShowQuanpinHelpcodeInCandidateWindow()}}},
+          {"quanpin",
+           {{"autocorrect_transposition", GetConfiguredQuanpinAutocorrectTransposition()},
+            {"autocorrect_neighbor", GetConfiguredQuanpinAutocorrectNeighbor()}}}}}};
     payload["data"]["voice_input"]["polish_presets"] = std::move(polish_presets);
     payload["protocolVersion"] = metasequoia::webview::Version;
     const std::string serialized = payload.dump();
@@ -726,6 +729,10 @@ bool ApplyConfigUpdate(const json::object &data)
         return SetConfiguredQuanpinHelpcodeSchema(json::value_to<std::string>(data.at("value")));
     if (path == "helpcode.show_qp_helpcode_in_candidate_window")
         return SetConfiguredShowQuanpinHelpcodeInCandidateWindow(json::value_to<bool>(data.at("value")));
+    if (path == "quanpin.autocorrect_transposition")
+        return SetConfiguredQuanpinAutocorrectTransposition(json::value_to<bool>(data.at("value")));
+    if (path == "quanpin.autocorrect_neighbor")
+        return SetConfiguredQuanpinAutocorrectNeighbor(json::value_to<bool>(data.at("value")));
     return false;
 }
 

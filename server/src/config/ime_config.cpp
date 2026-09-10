@@ -75,7 +75,10 @@ std::string g_shuangpin_helpcode_schema = "lantian";
 std::string g_quanpin_helpcode_schema = "lantian";
 bool g_show_shuangpin_helpcode_in_candidate_window = true;
 bool g_show_quanpin_helpcode_in_candidate_window = true;
-bool g_quanpin_autocorrect_enabled = true;
+// The legacy single "quanpin.autocorrect" key is deliberately not read anymore:
+// both correction types default to off and users opt in from the settings page.
+bool g_quanpin_autocorrect_transposition = false;
+bool g_quanpin_autocorrect_neighbor = false;
 bool g_floating_toolbar_enabled = true;
 FloatingToolbarItemsConfig g_floating_toolbar_items;
 double g_floating_toolbar_scale = 1.0;
@@ -367,7 +370,14 @@ bool InsertTomlValuePreservingFormatting(std::string &text, const std::string &s
     const size_t section_begin = text.find(section_header);
     if (section_begin == std::string::npos)
     {
-        return false;
+        // 出厂模板不带全部设置段（如 [quanpin]），首次安装后第一次写这类键不能失败，
+        // 否则设置页报「保存失败」。把缺失的段追加到文件尾部，语义由末尾的 toml::parse 校验兜底。
+        if (!text.empty() && text.back() != '\n')
+        {
+            text.push_back('\n');
+        }
+        text.append(section_header + "\n" + key + " = " + value + "\n");
+        return true;
     }
 
     const size_t section_line_end = text.find('\n', section_begin + section_header.size());
@@ -756,7 +766,8 @@ bool LoadImeConfig()
             tbl["helpcode"]["show_sp_helpcode_in_candidate_window"].value_or(true);
         g_show_quanpin_helpcode_in_candidate_window =
             tbl["helpcode"]["show_qp_helpcode_in_candidate_window"].value_or(true);
-        g_quanpin_autocorrect_enabled = tbl["quanpin"]["autocorrect"].value_or(true);
+        g_quanpin_autocorrect_transposition = tbl["quanpin"]["autocorrect_transposition"].value_or(false);
+        g_quanpin_autocorrect_neighbor = tbl["quanpin"]["autocorrect_neighbor"].value_or(false);
         g_floating_toolbar_enabled = tbl["general"]["floating_toolbar"].value_or(true);
         // Read the old candidate-only key as a migration fallback. New writes
         // use the unified key.
@@ -1997,18 +2008,33 @@ bool SetConfiguredQuanpinHelpcodeEnabled(bool enabled)
     return true;
 }
 
-bool GetConfiguredQuanpinAutocorrectEnabled()
+bool GetConfiguredQuanpinAutocorrectTransposition()
 {
-    return g_quanpin_autocorrect_enabled;
+    return g_quanpin_autocorrect_transposition;
 }
 
-bool SetConfiguredQuanpinAutocorrectEnabled(bool enabled)
+bool SetConfiguredQuanpinAutocorrectTransposition(bool enabled)
 {
-    if (!WriteConfiguredValue("quanpin", "autocorrect", enabled ? "true" : "false"))
+    if (!WriteConfiguredValue("quanpin", "autocorrect_transposition", enabled ? "true" : "false"))
     {
         return false;
     }
-    g_quanpin_autocorrect_enabled = enabled;
+    g_quanpin_autocorrect_transposition = enabled;
+    return true;
+}
+
+bool GetConfiguredQuanpinAutocorrectNeighbor()
+{
+    return g_quanpin_autocorrect_neighbor;
+}
+
+bool SetConfiguredQuanpinAutocorrectNeighbor(bool enabled)
+{
+    if (!WriteConfiguredValue("quanpin", "autocorrect_neighbor", enabled ? "true" : "false"))
+    {
+        return false;
+    }
+    g_quanpin_autocorrect_neighbor = enabled;
     return true;
 }
 
