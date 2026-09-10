@@ -89,8 +89,7 @@ inline constexpr Entry kNeighborEntries[] = {{
 {neighbor_entries}
 }};
 
-inline constexpr std::size_t kTranspositionCount =
-    sizeof(kTranspositionEntries) / sizeof(kTranspositionEntries[0]);
+inline constexpr std::size_t kTranspositionCount = sizeof(kTranspositionEntries) / sizeof(kTranspositionEntries[0]);
 inline constexpr std::size_t kNeighborCount = sizeof(kNeighborEntries) / sizeof(kNeighborEntries[0]);
 
 }} // namespace quanpin::autocorrect

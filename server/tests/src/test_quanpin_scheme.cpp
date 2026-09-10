@@ -519,8 +519,7 @@ TEST_CASE(QuanpinAutocorrectTableHasNoCollisionsWithLegalPinyin)
 {
     const auto &legal = quanpin::intact_pinyin_set();
     std::unordered_set<std::string> wrong_keys;
-    for (const auto *table :
-         {&quanpin::autocorrect::kTranspositionEntries, &quanpin::autocorrect::kNeighborEntries})
+    for (const auto *table : {&quanpin::autocorrect::kTranspositionEntries, &quanpin::autocorrect::kNeighborEntries})
     {
         for (const auto &entry : *table)
         {
@@ -688,8 +687,8 @@ TEST_CASE(QuanpinDictionaryAutocorrectMultisyllableInput)
     const auto db_path = CreateAutocorrectDatabase();
     QuanpinDictionary dictionary(db_path.string());
 
-    const auto candidates =
-        dictionary.query("sahngzhi", "sa'h'n'g'zhi", quanpin::kAutocorrectTransposition | quanpin::kAutocorrectNeighbor);
+    const auto candidates = dictionary.query("sahngzhi", "sa'h'n'g'zhi",
+                                             quanpin::kAutocorrectTransposition | quanpin::kAutocorrectNeighbor);
     REQUIRE(!candidates.empty());
     REQUIRE_EQ(candidates.front().word, std::string("上至"));
 }
