@@ -358,6 +358,10 @@ std::wstring BuildConfigMessage(bool refresh_skin_catalog)
           {"utility",
            {{"unicode_mode", GetConfiguredUnicodeModeEnabled()},
             {"quick_phrase", GetConfiguredQuickPhraseEnabled()},
+            {"date_format_primary", GetConfiguredDateFormatPrimary()},
+            {"date_format_secondary", GetConfiguredDateFormatSecondary()},
+            {"time_format_primary", GetConfiguredTimeFormatPrimary()},
+            {"time_format_secondary", GetConfiguredTimeFormatSecondary()},
             {"emoji_mode", GetConfiguredEmojiModeEnabled()},
             {"kaomoji_mode", GetConfiguredKaomojiModeEnabled()},
             {"jianpin_mode", GetConfiguredJianpinModeEnabled()},
@@ -634,6 +638,14 @@ bool ApplyConfigUpdate(const json::object &data)
         return SetConfiguredUnicodeModeEnabled(json::value_to<bool>(data.at("value")));
     if (path == "utility.quick_phrase")
         return SetConfiguredQuickPhraseEnabled(json::value_to<bool>(data.at("value")));
+    if (path == "utility.date_format_primary")
+        return SetConfiguredDateFormatPrimary(json::value_to<std::string>(data.at("value")));
+    if (path == "utility.date_format_secondary")
+        return SetConfiguredDateFormatSecondary(json::value_to<std::string>(data.at("value")));
+    if (path == "utility.time_format_primary")
+        return SetConfiguredTimeFormatPrimary(json::value_to<std::string>(data.at("value")));
+    if (path == "utility.time_format_secondary")
+        return SetConfiguredTimeFormatSecondary(json::value_to<std::string>(data.at("value")));
     if (path == "utility.emoji_mode")
         return SetConfiguredEmojiModeEnabled(json::value_to<bool>(data.at("value")));
     if (path == "utility.kaomoji_mode")

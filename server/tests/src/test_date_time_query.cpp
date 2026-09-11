@@ -1,6 +1,7 @@
 #include "tests/includes/test_framework.h"
 #include "MetasequoiaImeEngine/local_modes/date_time_query.h"
 
+#include <algorithm>
 #include <array>
 
 namespace
@@ -122,4 +123,55 @@ TEST_CASE(date_time_query_rejects_unknown_words_and_honors_limit)
     REQUIRE(metasequoia::local_modes::query_date_time("today", &now).empty());
     REQUIRE(metasequoia::local_modes::query_date_time("rq", &now, 0).empty());
     REQUIRE_EQ(metasequoia::local_modes::query_date_time("rq", &now, 3).size(), static_cast<size_t>(3));
+}
+
+TEST_CASE(date_time_query_accepts_syllable_separator_wake_words)
+{
+    // r'q / ri'qi / s'j / shi'jian 与不带分隔符的写法等价，读写单引号都要认。
+    for (const char *keyword : std::array<const char *, 6>{"r'q", "ri'qi", "date", "x'q", "xing'qi", "week"})
+    {
+        REQUIRE(metasequoia::local_modes::is_date_time_keyword(keyword));
+    }
+    REQUIRE(metasequoia::local_modes::date_time_keyword_kind("r'q") == metasequoia::local_modes::DateTimeKind::Date);
+    REQUIRE(metasequoia::local_modes::date_time_keyword_kind("ri'qi") ==
+            metasequoia::local_modes::DateTimeKind::Date);
+    REQUIRE(metasequoia::local_modes::date_time_keyword_kind("s'j") == metasequoia::local_modes::DateTimeKind::Time);
+    REQUIRE(metasequoia::local_modes::date_time_keyword_kind("shi'jian") ==
+            metasequoia::local_modes::DateTimeKind::Time);
+    REQUIRE(metasequoia::local_modes::date_time_keyword_kind("x'q") == metasequoia::local_modes::DateTimeKind::Week);
+
+    const LocalDateTime now = SampleTime();
+    const auto separated = metasequoia::local_modes::query_date_time("r'q", &now);
+    const auto plain = metasequoia::local_modes::query_date_time("rq", &now);
+    REQUIRE_EQ(separated.size(), plain.size());
+    REQUIRE_EQ(separated.front().word, plain.front().word);
+}
+
+TEST_CASE(date_time_query_exposes_selectable_formats)
+{
+    using metasequoia::local_modes::DateTimeKind;
+    using metasequoia::local_modes::date_time_format_options;
+    using metasequoia::local_modes::format_date_time;
+
+    const auto date_options = date_time_format_options(DateTimeKind::Date);
+    // 两个系统保留项排在最前，其余为本地格式。
+    REQUIRE(date_options.size() >= static_cast<size_t>(3));
+    REQUIRE_EQ(date_options[0].id, std::string(metasequoia::local_modes::kDateTimeSystemLongFormatId));
+    REQUIRE_EQ(date_options[1].id, std::string(metasequoia::local_modes::kDateTimeSystemShortFormatId));
+
+    const LocalDateTime now = SampleTime();
+    REQUIRE_EQ(format_date_time(DateTimeKind::Date, "iso_date", now), std::string("2026-08-09"));
+    REQUIRE_EQ(format_date_time(DateTimeKind::Time, "hm", now), std::string("14:30"));
+    // 系统保留 id 由宿主机解析，引擎返回空串。
+    REQUIRE(format_date_time(DateTimeKind::Date, metasequoia::local_modes::kDateTimeSystemLongFormatId, now).empty());
+    REQUIRE(format_date_time(DateTimeKind::Date, "no_such_format", now).empty());
+
+    const auto time_options = date_time_format_options(DateTimeKind::Time);
+    const bool has_hm = std::any_of(time_options.begin(), time_options.end(),
+                                    [](const auto &option) { return option.id == "hm"; });
+    REQUIRE(has_hm);
+    // 星期不提供系统长/短格式。
+    const auto week_options = date_time_format_options(DateTimeKind::Week);
+    REQUIRE(!week_options.empty());
+    REQUIRE(week_options.front().id != std::string(metasequoia::local_modes::kDateTimeSystemLongFormatId));
 }

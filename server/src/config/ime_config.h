@@ -241,6 +241,16 @@ bool GetConfiguredUnicodeModeEnabled();
 bool SetConfiguredUnicodeModeEnabled(bool enabled);
 bool GetConfiguredQuickPhraseEnabled();
 bool SetConfiguredQuickPhraseEnabled(bool enabled);
+// 日期/时间快捷输入的候选格式。取值是引擎的格式 id，或系统保留 id
+// "system_long" / "system_short"（由宿主按当前用户区域解析）。
+const std::string &GetConfiguredDateFormatPrimary();
+bool SetConfiguredDateFormatPrimary(const std::string &format);
+const std::string &GetConfiguredDateFormatSecondary();
+bool SetConfiguredDateFormatSecondary(const std::string &format);
+const std::string &GetConfiguredTimeFormatPrimary();
+bool SetConfiguredTimeFormatPrimary(const std::string &format);
+const std::string &GetConfiguredTimeFormatSecondary();
+bool SetConfiguredTimeFormatSecondary(const std::string &format);
 bool GetConfiguredEmojiModeEnabled();
 bool SetConfiguredEmojiModeEnabled(bool enabled);
 bool GetConfiguredKaomojiModeEnabled();

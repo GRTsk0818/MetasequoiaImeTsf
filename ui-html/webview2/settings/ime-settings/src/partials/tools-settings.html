@@ -46,6 +46,143 @@
     </div>
   </div>
 
+  <!-- 日期/时间格式选项镜像引擎 local_modes/date_time_query.h 的 date_time_format_options：
+       data-value 必须与引擎格式 id 一致，文案与引擎用同一采样时刻（2026-08-09 周日 14:30）生成。
+       引擎新增 / 改名格式时同步这 4 个菜单，否则设置写入会被 SetConfigured*Format 拒绝。 -->
+  <div class="section date-time-section">
+    <div class="section-header">
+      <div>
+        <div class="section-title">日期与时间快捷输入</div>
+        <div class="quick-phrase-description">中文模式下直接输入 r'q / ri'qi 得到当前日期，s'j / shi'jian 得到当前时间，x'q / xingqi 得到星期。候选固定出现在第 2 位，与中英混输一致。默认使用当前系统区域的长格式（主候选）与短格式（副候选）。</div>
+      </div>
+    </div>
+    <div class="frequency-option-content">
+      <div class="section-header frequency-option-row">
+        <div>
+          <div class="section-title">日期主候选格式</div>
+          <div class="input-setting-description">显示在第 2 位</div>
+        </div>
+        <div class="dropdown">
+          <button class="dropdown-toggle frequency-dropdown-toggle" id="dateFormatPrimaryBtn">
+            <span>跟随系统长格式</span><img src="./assets/arrow.svg" alt="▼">
+          </button>
+          <div class="dropdown-menu frequency-dropdown-menu" id="dateFormatPrimaryMenu">
+            <div class="dropdown-item" data-value="system_long">跟随系统长格式</div>
+            <div class="dropdown-item" data-value="system_short">跟随系统短格式</div>
+            <div class="dropdown-item" data-value="cn_ymd">2026年8月9日</div>
+            <div class="dropdown-item" data-value="iso_date">2026-08-09</div>
+            <div class="dropdown-item" data-value="slash_date">2026/08/09</div>
+            <div class="dropdown-item" data-value="dot_date">2026.08.09</div>
+            <div class="dropdown-item" data-value="compact_date">20260809</div>
+            <div class="dropdown-item" data-value="cn_ymd_2y">26年8月9日</div>
+            <div class="dropdown-item" data-value="cn_md">8月9日</div>
+            <div class="dropdown-item" data-value="md_dash">08-09</div>
+            <div class="dropdown-item" data-value="md_compact">0809</div>
+            <div class="dropdown-item" data-value="cn_ymd_weekday">2026年8月9日 星期日</div>
+            <div class="dropdown-item" data-value="cn_md_weekday">8月9日 周日</div>
+            <div class="dropdown-item" data-value="iso_weekday_en">2026-08-09 Sun</div>
+            <div class="dropdown-item" data-value="date_hm">2026-08-09 14:30</div>
+            <div class="dropdown-item" data-value="cn_md_hm">8月9日 14:30</div>
+            <div class="dropdown-item" data-value="cn_lower">二〇二六年八月九日</div>
+            <div class="dropdown-item" data-value="cn_financial">贰零贰陆年捌月零玖日</div>
+            <div class="dropdown-item" data-value="cn_lunar">丙午年六月二十七日</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-option-divider"></div>
+      <div class="section-header frequency-option-row">
+        <div>
+          <div class="section-title">日期副候选格式</div>
+          <div class="input-setting-description">暂不进入候选窗，作为备用格式保留</div>
+        </div>
+        <div class="dropdown">
+          <button class="dropdown-toggle frequency-dropdown-toggle" id="dateFormatSecondaryBtn">
+            <span>跟随系统短格式</span><img src="./assets/arrow.svg" alt="▼">
+          </button>
+          <div class="dropdown-menu frequency-dropdown-menu" id="dateFormatSecondaryMenu">
+            <div class="dropdown-item" data-value="system_long">跟随系统长格式</div>
+            <div class="dropdown-item" data-value="system_short">跟随系统短格式</div>
+            <div class="dropdown-item" data-value="cn_ymd">2026年8月9日</div>
+            <div class="dropdown-item" data-value="iso_date">2026-08-09</div>
+            <div class="dropdown-item" data-value="slash_date">2026/08/09</div>
+            <div class="dropdown-item" data-value="dot_date">2026.08.09</div>
+            <div class="dropdown-item" data-value="compact_date">20260809</div>
+            <div class="dropdown-item" data-value="cn_ymd_2y">26年8月9日</div>
+            <div class="dropdown-item" data-value="cn_md">8月9日</div>
+            <div class="dropdown-item" data-value="md_dash">08-09</div>
+            <div class="dropdown-item" data-value="md_compact">0809</div>
+            <div class="dropdown-item" data-value="cn_ymd_weekday">2026年8月9日 星期日</div>
+            <div class="dropdown-item" data-value="cn_md_weekday">8月9日 周日</div>
+            <div class="dropdown-item" data-value="iso_weekday_en">2026-08-09 Sun</div>
+            <div class="dropdown-item" data-value="date_hm">2026-08-09 14:30</div>
+            <div class="dropdown-item" data-value="cn_md_hm">8月9日 14:30</div>
+            <div class="dropdown-item" data-value="cn_lower">二〇二六年八月九日</div>
+            <div class="dropdown-item" data-value="cn_financial">贰零贰陆年捌月零玖日</div>
+            <div class="dropdown-item" data-value="cn_lunar">丙午年六月二十七日</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-option-divider"></div>
+      <div class="section-header frequency-option-row">
+        <div>
+          <div class="section-title">时间主候选格式</div>
+          <div class="input-setting-description">显示在第 2 位</div>
+        </div>
+        <div class="dropdown">
+          <button class="dropdown-toggle frequency-dropdown-toggle" id="timeFormatPrimaryBtn">
+            <span>跟随系统长格式</span><img src="./assets/arrow.svg" alt="▼">
+          </button>
+          <div class="dropdown-menu frequency-dropdown-menu" id="timeFormatPrimaryMenu">
+            <div class="dropdown-item" data-value="system_long">跟随系统长格式</div>
+            <div class="dropdown-item" data-value="system_short">跟随系统短格式</div>
+            <div class="dropdown-item" data-value="hm">14:30</div>
+            <div class="dropdown-item" data-value="hms">14:30:00</div>
+            <div class="dropdown-item" data-value="hm_compact">1430</div>
+            <div class="dropdown-item" data-value="hms_compact">143000</div>
+            <div class="dropdown-item" data-value="cn_period_hm">下午2:30</div>
+            <div class="dropdown-item" data-value="cn_period_verbose">下午2点30分</div>
+            <div class="dropdown-item" data-value="cn_colloquial">下午两点半</div>
+            <div class="dropdown-item" data-value="h12_upper">2:30 PM</div>
+            <div class="dropdown-item" data-value="h12_lower">2:30pm</div>
+            <div class="dropdown-item" data-value="h12_hms_upper">02:30:00 PM</div>
+            <div class="dropdown-item" data-value="datetime_iso">2026-08-09 14:30:00</div>
+            <div class="dropdown-item" data-value="cn_ymd_hm">2026年8月9日 14:30</div>
+            <div class="dropdown-item" data-value="cn_md_period_hm">8月9日 下午2:30</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-option-divider"></div>
+      <div class="section-header frequency-option-row">
+        <div>
+          <div class="section-title">时间副候选格式</div>
+          <div class="input-setting-description">暂不进入候选窗，作为备用格式保留</div>
+        </div>
+        <div class="dropdown">
+          <button class="dropdown-toggle frequency-dropdown-toggle" id="timeFormatSecondaryBtn">
+            <span>跟随系统短格式</span><img src="./assets/arrow.svg" alt="▼">
+          </button>
+          <div class="dropdown-menu frequency-dropdown-menu" id="timeFormatSecondaryMenu">
+            <div class="dropdown-item" data-value="system_long">跟随系统长格式</div>
+            <div class="dropdown-item" data-value="system_short">跟随系统短格式</div>
+            <div class="dropdown-item" data-value="hm">14:30</div>
+            <div class="dropdown-item" data-value="hms">14:30:00</div>
+            <div class="dropdown-item" data-value="hm_compact">1430</div>
+            <div class="dropdown-item" data-value="hms_compact">143000</div>
+            <div class="dropdown-item" data-value="cn_period_hm">下午2:30</div>
+            <div class="dropdown-item" data-value="cn_period_verbose">下午2点30分</div>
+            <div class="dropdown-item" data-value="cn_colloquial">下午两点半</div>
+            <div class="dropdown-item" data-value="h12_upper">2:30 PM</div>
+            <div class="dropdown-item" data-value="h12_lower">2:30pm</div>
+            <div class="dropdown-item" data-value="h12_hms_upper">02:30:00 PM</div>
+            <div class="dropdown-item" data-value="datetime_iso">2026-08-09 14:30:00</div>
+            <div class="dropdown-item" data-value="cn_ymd_hm">2026年8月9日 14:30</div>
+            <div class="dropdown-item" data-value="cn_md_period_hm">8月9日 下午2:30</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="section unicode-mode-section">
     <div class="section-header">
       <div>

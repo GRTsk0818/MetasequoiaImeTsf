@@ -3,7 +3,7 @@ import { onHostMessage } from '../utils/host-messages';
 import type { SettingsMessage } from '../../../../shared/messages';
 type DictionaryRequest = Extract<SettingsMessage, { type: 'dictionaryRequest' }>['data'];
 import { serializeHostMessage } from '../../../../shared/messages';
-import { setupToggleButton } from './shared';
+import { setupDropdownMenu, setupToggleButton } from './shared';
 import { updateConfig } from './config-sync';
 
 type QuickPhraseRow = { code: string; word: string; weight: number };
@@ -128,6 +128,10 @@ export function setupToolsSettings(): void {
   setupToggleButton('rModeToggleBtn', (active) => {
     updateConfig('utility.r_mode', active);
   });
+  setupDropdownMenu('dateFormatPrimaryBtn', 'dateFormatPrimaryMenu', '', true, 'utility.date_format_primary');
+  setupDropdownMenu('dateFormatSecondaryBtn', 'dateFormatSecondaryMenu', '', true, 'utility.date_format_secondary');
+  setupDropdownMenu('timeFormatPrimaryBtn', 'timeFormatPrimaryMenu', '', true, 'utility.time_format_primary');
+  setupDropdownMenu('timeFormatSecondaryBtn', 'timeFormatSecondaryMenu', '', true, 'utility.time_format_secondary');
   document.getElementById('quickPhraseSearchButton')?.addEventListener('click', () => query());
   document.getElementById('quickPhraseSearch')?.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Enter') query(); });
   document.getElementById('quickPhraseAddButton')?.addEventListener('click', () => openDialog());

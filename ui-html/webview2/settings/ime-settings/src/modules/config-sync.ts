@@ -152,6 +152,26 @@ function applyConfigData(data: Record<string, any>, target?: string): void {
   if (typeof data?.utility?.quick_phrase === 'boolean') {
     applyToggleState('quickPhraseToggleBtn', data.utility.quick_phrase);
   }
+  applyDropdownValue(
+    'dateFormatPrimaryBtn',
+    'dateFormatPrimaryMenu',
+    typeof data?.utility?.date_format_primary === 'string' ? data.utility.date_format_primary : undefined
+  );
+  applyDropdownValue(
+    'dateFormatSecondaryBtn',
+    'dateFormatSecondaryMenu',
+    typeof data?.utility?.date_format_secondary === 'string' ? data.utility.date_format_secondary : undefined
+  );
+  applyDropdownValue(
+    'timeFormatPrimaryBtn',
+    'timeFormatPrimaryMenu',
+    typeof data?.utility?.time_format_primary === 'string' ? data.utility.time_format_primary : undefined
+  );
+  applyDropdownValue(
+    'timeFormatSecondaryBtn',
+    'timeFormatSecondaryMenu',
+    typeof data?.utility?.time_format_secondary === 'string' ? data.utility.time_format_secondary : undefined
+  );
   if (typeof data?.utility?.emoji_mode === 'boolean') {
     applyToggleState('emojiModeToggleBtn', data.utility.emoji_mode);
   }

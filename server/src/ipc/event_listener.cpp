@@ -265,16 +265,121 @@ bool IsUnicodeInput(const std::string &raw)
     return index < raw.size();
 }
 
+// 唤醒词允许用单引号分隔音节（r'q / ri'qi）。这里去掉分隔符，既用于“只含字母”的守卫，
+// 也与引擎的归一化保持一致；中英文单引号（' U+0027、‘ U+2018、’ U+2019）都接受。
+std::string StripDateTimeSeparators(const std::string &raw)
+{
+    std::string result;
+    result.reserve(raw.size());
+    for (std::size_t index = 0; index < raw.size(); ++index)
+    {
+        const unsigned char ch = static_cast<unsigned char>(raw[index]);
+        if (ch == '\'')
+        {
+            continue;
+        }
+        if (ch == 0xE2 && index + 2 < raw.size() && static_cast<unsigned char>(raw[index + 1]) == 0x80 &&
+            (static_cast<unsigned char>(raw[index + 2]) == 0x98 ||
+             static_cast<unsigned char>(raw[index + 2]) == 0x99))
+        {
+            index += 2;
+            continue;
+        }
+        result.push_back(raw[index]);
+    }
+    return result;
+}
+
 // 全拼下直接键入日期/时间唤醒词（rq/riqi/date、sj/shijian/time、xq/xingqi/week，
-// 无任何模式前缀）。全小写守卫防止大写辅助码（如 "RQ"）误触发，精确匹配交给
-// 引擎的 is_date_time_keyword。双拼/五笔下这些序列可能是合法编码，因此仅在
-// Quanpin 会话且不在造词过程中拦截。
+// 无任何模式前缀；也接受 r'q / ri'qi 这类带分隔符写法）。全小写守卫防止大写辅助码
+// （如 "RQ"）误触发，精确匹配交给引擎的 is_date_time_keyword。双拼/五笔下这些序列
+// 可能是合法编码，因此仅在 Quanpin 会话且不在造词过程中拦截。
 bool IsDirectDateTimeInput(const std::string &raw)
 {
-    return g_inputSession != nullptr && g_inputSession->current_scheme_type() == SchemeType::Quanpin &&
-           !GlobalIme::composition.creating_word.active &&
-           std::all_of(raw.begin(), raw.end(), [](unsigned char ch) { return ch >= 'a' && ch <= 'z'; }) &&
+    if (g_inputSession == nullptr || g_inputSession->current_scheme_type() != SchemeType::Quanpin ||
+        GlobalIme::composition.creating_word.active)
+    {
+        return false;
+    }
+    const std::string letters = StripDateTimeSeparators(raw);
+    return !letters.empty() &&
+           std::all_of(letters.begin(), letters.end(), [](unsigned char ch) { return ch >= 'a' && ch <= 'z'; }) &&
            metasequoia::local_modes::is_date_time_keyword(raw);
+}
+
+SYSTEMTIME ToSystemTime(const metasequoia::local_modes::LocalDateTime &now)
+{
+    SYSTEMTIME value = {};
+    value.wYear = static_cast<WORD>(now.year);
+    value.wMonth = static_cast<WORD>(now.month);
+    value.wDay = static_cast<WORD>(now.day);
+    value.wDayOfWeek = static_cast<WORD>(now.weekday);
+    value.wHour = static_cast<WORD>(now.hour);
+    value.wMinute = static_cast<WORD>(now.minute);
+    value.wSecond = static_cast<WORD>(now.second);
+    return value;
+}
+
+// 用当前用户区域设置取日期/时间的长或短格式。API 失败时返回空串，由调用方回退。
+std::string FormatSystemDateTime(metasequoia::local_modes::DateTimeKind kind, bool long_format)
+{
+    const SYSTEMTIME now = ToSystemTime(metasequoia::local_modes::current_local_date_time());
+    wchar_t buffer[128] = {};
+    const int written =
+        kind == metasequoia::local_modes::DateTimeKind::Time
+            ? GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, long_format ? 0u : TIME_NOSECONDS, &now, nullptr, buffer,
+                              ARRAYSIZE(buffer))
+            : GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, long_format ? DATE_LONGDATE : DATE_SHORTDATE, &now, nullptr,
+                              buffer, ARRAYSIZE(buffer), nullptr);
+    return written > 0 ? wstring_to_string(buffer) : std::string{};
+}
+
+// 主候选格式 id：日期与时间读设置，星期固定用中文写法（不参与长/短格式设置）。
+std::string ConfiguredPrimaryDateTimeFormat(metasequoia::local_modes::DateTimeKind kind)
+{
+    switch (kind)
+    {
+    case metasequoia::local_modes::DateTimeKind::Time:
+        return GetConfiguredTimeFormatPrimary();
+    case metasequoia::local_modes::DateTimeKind::Week:
+        return "week_cn";
+    case metasequoia::local_modes::DateTimeKind::Date:
+    default:
+        return GetConfiguredDateFormatPrimary();
+    }
+}
+
+// 日期/时间快捷输入的主候选：按设置取文本，系统保留 id 交给 Windows 区域设置解析。
+// 解析失败或配置异常时回退到引擎格式目录的默认项，保证候选永不为空。
+WordItem BuildDateTimeCandidate(const std::string &keyword)
+{
+    using metasequoia::local_modes::DateTimeKind;
+    const DateTimeKind kind = metasequoia::local_modes::date_time_keyword_kind(keyword);
+    const std::string format_id = ConfiguredPrimaryDateTimeFormat(kind);
+
+    std::string text;
+    if (format_id == metasequoia::local_modes::kDateTimeSystemLongFormatId)
+    {
+        text = FormatSystemDateTime(kind, true);
+    }
+    else if (format_id == metasequoia::local_modes::kDateTimeSystemShortFormatId)
+    {
+        text = FormatSystemDateTime(kind, false);
+    }
+    else
+    {
+        text = metasequoia::local_modes::format_date_time(kind, format_id,
+                                                          metasequoia::local_modes::current_local_date_time());
+    }
+
+    if (text.empty())
+    {
+        const char *fallback =
+            kind == DateTimeKind::Time ? "hm" : (kind == DateTimeKind::Week ? "week_cn" : "cn_ymd");
+        text = metasequoia::local_modes::format_date_time(kind, fallback,
+                                                          metasequoia::local_modes::current_local_date_time());
+    }
+    return WordItem("", text, 0, CandidateSource::Generated);
 }
 
 bool IsEmojiCompositionActive(const std::string &raw)
@@ -3151,6 +3256,9 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     std::string pinyin = wstring_to_string(Global::PinyinString);
     const std::string current_input = g_inputSession->get_pinyin_sequence_with_cases();
     std::vector<WordItem> items;
+    // 日期/时间唤醒词不抑制常规候选：常规中文/兜底候选照常生成，主格式候选随后固定
+    // 插入第 2 位（与中英混输补充英文词的位次一致），因此这里不再走整体替换分支。
+    const bool date_time_trigger = !g_english_input_mode && IsDirectDateTimeInput(current_input);
     if (g_english_input_mode)
     {
         // Do not expose transient Chinese/raw fallback candidates while the
@@ -3163,10 +3271,6 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     else if (IsQuickPhraseInput(current_input))
     {
         items = metasequoia::local_modes::query_quick_phrases(current_input.substr(1)).candidates;
-    }
-    else if (IsDirectDateTimeInput(current_input))
-    {
-        items = metasequoia::local_modes::query_date_time(current_input);
     }
     else if (IsEmojiInput(current_input))
     {
@@ -3201,10 +3305,10 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     }
     else if (IsSpecialModeCompositionActive(current_input))
     {
-        // A K/U/T/E/M/J/Y special-mode prefix that is not yet a complete input (e.g.
-        // "K", "U", "U+", "Tw", "Txin", "E", "M", "J", "Y"): do not translate it into
-        // normal pinyin candidates. Leave items empty so only the raw typed text
-        // shows as the fallback.
+        // A K/U/E/M/J/Y special-mode prefix that is not yet a complete input (e.g.
+        // "K", "U", "U+", "E", "M", "J", "Y"): do not translate it into normal pinyin
+        // candidates. Leave items empty so only the raw typed text shows as the fallback.
+        // Date/time has no mode prefix, so it never reaches this branch.
     }
     else
     {
@@ -3225,6 +3329,14 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
         items.emplace_back(pinyin, pinyin, 1, CandidateSource::Fallback);
     }
 
+    if (date_time_trigger)
+    {
+        // 日期/时间快捷输入的主格式候选固定落在第 2 位，其余位次保持常规候选。
+        const WordItem date_time_candidate = BuildDateTimeCandidate(current_input);
+        const auto insert_at = items.empty() ? items.begin() : items.begin() + 1;
+        items.insert(insert_at, date_time_candidate);
+    }
+
     // Whatever the branch above did that the two splits did not already claim.
     const double branchMs = segment.Split();
     const size_t itemCount = items.size();
@@ -3243,8 +3355,8 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     {
         UpdateEnglishInput(current_input.substr(1), client_id, activation_epoch, true);
     }
-    else if (!IsSpecialModeCompositionActive(current_input) && GetConfiguredEnglishCandidatesEnabled() &&
-             (scheme == SchemeType::Quanpin || scheme == SchemeType::Shuangpin) &&
+    else if (!IsSpecialModeCompositionActive(current_input) && !date_time_trigger &&
+             GetConfiguredEnglishCandidatesEnabled() && (scheme == SchemeType::Quanpin || scheme == SchemeType::Shuangpin) &&
              !GlobalIme::composition.creating_word.active)
     {
         UpdateEnglishInput(current_input, client_id, activation_epoch);
@@ -3255,7 +3367,7 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     }
     const double englishMs = segment.Split();
 
-    if (!g_english_input_mode && !IsSpecialModeCompositionActive(current_input) &&
+    if (!g_english_input_mode && !IsSpecialModeCompositionActive(current_input) && !date_time_trigger &&
         GetConfiguredEmojiMixedInputEnabled() && (scheme == SchemeType::Quanpin || scheme == SchemeType::Shuangpin) &&
         !GlobalIme::composition.creating_word.active)
     {
@@ -3267,7 +3379,7 @@ void PrepareCandidateList(uint64_t client_id, uint64_t activation_epoch)
     }
     const double emojiMs = segment.Split();
 
-    if (!g_english_input_mode && !IsSpecialModeCompositionActive(current_input) &&
+    if (!g_english_input_mode && !IsSpecialModeCompositionActive(current_input) && !date_time_trigger &&
         GetConfiguredKaomojiMixedInputEnabled() && (scheme == SchemeType::Quanpin || scheme == SchemeType::Shuangpin) &&
         !GlobalIme::composition.creating_word.active)
     {

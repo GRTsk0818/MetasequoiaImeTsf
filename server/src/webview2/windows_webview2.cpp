@@ -4176,6 +4176,38 @@ HRESULT OnControllerCreatedSettingsWnd(            //
                                     PostSettingsConfig();
                                 }
                             }
+                            else if (path == "utility.date_format_primary")
+                            {
+                                const std::string value = json::value_to<std::string>(data.at("value"));
+                                if (SetConfiguredDateFormatPrimary(value))
+                                {
+                                    PostSettingsConfig();
+                                }
+                            }
+                            else if (path == "utility.date_format_secondary")
+                            {
+                                const std::string value = json::value_to<std::string>(data.at("value"));
+                                if (SetConfiguredDateFormatSecondary(value))
+                                {
+                                    PostSettingsConfig();
+                                }
+                            }
+                            else if (path == "utility.time_format_primary")
+                            {
+                                const std::string value = json::value_to<std::string>(data.at("value"));
+                                if (SetConfiguredTimeFormatPrimary(value))
+                                {
+                                    PostSettingsConfig();
+                                }
+                            }
+                            else if (path == "utility.time_format_secondary")
+                            {
+                                const std::string value = json::value_to<std::string>(data.at("value"));
+                                if (SetConfiguredTimeFormatSecondary(value))
+                                {
+                                    PostSettingsConfig();
+                                }
+                            }
                             else if (path == "utility.emoji_mode")
                             {
                                 const bool value = json::value_to<bool>(data.at("value"));
@@ -4526,6 +4558,10 @@ void PostSettingsConfig()
           {"utility",
            {{"unicode_mode", GetConfiguredUnicodeModeEnabled()},
             {"quick_phrase", GetConfiguredQuickPhraseEnabled()},
+            {"date_format_primary", GetConfiguredDateFormatPrimary()},
+            {"date_format_secondary", GetConfiguredDateFormatSecondary()},
+            {"time_format_primary", GetConfiguredTimeFormatPrimary()},
+            {"time_format_secondary", GetConfiguredTimeFormatSecondary()},
             {"emoji_mode", GetConfiguredEmojiModeEnabled()},
             {"kaomoji_mode", GetConfiguredKaomojiModeEnabled()},
             {"jianpin_mode", GetConfiguredJianpinModeEnabled()},

@@ -27,6 +27,7 @@
 #include "defines/defines.h"
 #include "ipc/ipc.h"
 #include "MetasequoiaImeEngine/common/helpcode_utils.h"
+#include "MetasequoiaImeEngine/local_modes/date_time_query.h"
 #include "voice-input/voice_providers.h"
 
 namespace
@@ -91,6 +92,12 @@ bool g_emoji_mixed_input_enabled = false;
 bool g_kaomoji_mixed_input_enabled = false;
 bool g_unicode_mode_enabled = true;
 bool g_quick_phrase_enabled = true;
+// 日期/时间快捷输入的候选格式 id；默认跟随系统长/短格式。取值由引擎的格式目录约束，
+// 加载与写入时都会用 DateTimeFormatIsKnown 校验。
+std::string g_date_format_primary = "system_long";
+std::string g_date_format_secondary = "system_short";
+std::string g_time_format_primary = "system_long";
+std::string g_time_format_secondary = "system_short";
 bool g_emoji_mode_enabled = true;
 bool g_kaomoji_mode_enabled = true;
 bool g_jianpin_mode_enabled = true;
@@ -765,6 +772,28 @@ void RememberConfigWriteTime()
     }
 }
 
+// 日期/时间格式 id 校验：只接受引擎格式目录里的 id（含两个系统保留项）。配置文件里出现
+// 未知值时回退到给定默认 id，避免旧配置或手改配置让候选变空。
+std::string NormalizeDateTimeFormat(const std::string &format, metasequoia::local_modes::DateTimeKind kind,
+                                    const char *fallback)
+{
+    const auto options = metasequoia::local_modes::date_time_format_options(kind);
+    const bool known =
+        std::any_of(options.begin(), options.end(), [&](const metasequoia::local_modes::DateTimeFormatOption &option) {
+            return option.id == format;
+        });
+    return known ? format : std::string(fallback);
+}
+
+bool DateTimeFormatIsKnown(metasequoia::local_modes::DateTimeKind kind, const std::string &format)
+{
+    const auto options = metasequoia::local_modes::date_time_format_options(kind);
+    return std::any_of(options.begin(), options.end(),
+                       [&](const metasequoia::local_modes::DateTimeFormatOption &option) {
+                           return option.id == format;
+                       });
+}
+
 bool LoadImeConfig()
 {
     ConfigFileLock lock;
@@ -907,6 +936,18 @@ bool LoadImeConfig()
         g_kaomoji_mixed_input_enabled = tbl["general"]["kaomoji_mixed_input"].value_or(false);
         g_unicode_mode_enabled = tbl["utility"]["unicode_mode"].value_or(true);
         g_quick_phrase_enabled = tbl["utility"]["quick_phrase"].value_or(true);
+        g_date_format_primary =
+            NormalizeDateTimeFormat(tbl["utility"]["date_format_primary"].value_or(std::string("system_long")),
+                                    metasequoia::local_modes::DateTimeKind::Date, "system_long");
+        g_date_format_secondary =
+            NormalizeDateTimeFormat(tbl["utility"]["date_format_secondary"].value_or(std::string("system_short")),
+                                    metasequoia::local_modes::DateTimeKind::Date, "system_short");
+        g_time_format_primary =
+            NormalizeDateTimeFormat(tbl["utility"]["time_format_primary"].value_or(std::string("system_long")),
+                                    metasequoia::local_modes::DateTimeKind::Time, "system_long");
+        g_time_format_secondary =
+            NormalizeDateTimeFormat(tbl["utility"]["time_format_secondary"].value_or(std::string("system_short")),
+                                    metasequoia::local_modes::DateTimeKind::Time, "system_short");
         g_emoji_mode_enabled = tbl["utility"]["emoji_mode"].value_or(true);
         g_kaomoji_mode_enabled = tbl["utility"]["kaomoji_mode"].value_or(true);
         g_jianpin_mode_enabled = tbl["utility"]["jianpin_mode"].value_or(true);
@@ -3075,6 +3116,82 @@ bool SetConfiguredQuickPhraseEnabled(bool enabled)
         return false;
     }
     g_quick_phrase_enabled = enabled;
+    return true;
+}
+
+const std::string &GetConfiguredDateFormatPrimary()
+{
+    return g_date_format_primary;
+}
+
+bool SetConfiguredDateFormatPrimary(const std::string &format)
+{
+    if (!DateTimeFormatIsKnown(metasequoia::local_modes::DateTimeKind::Date, format))
+    {
+        return false;
+    }
+    if (!WriteConfiguredValue("utility", "date_format_primary", EscapeTomlBasicString(format)))
+    {
+        return false;
+    }
+    g_date_format_primary = format;
+    return true;
+}
+
+const std::string &GetConfiguredDateFormatSecondary()
+{
+    return g_date_format_secondary;
+}
+
+bool SetConfiguredDateFormatSecondary(const std::string &format)
+{
+    if (!DateTimeFormatIsKnown(metasequoia::local_modes::DateTimeKind::Date, format))
+    {
+        return false;
+    }
+    if (!WriteConfiguredValue("utility", "date_format_secondary", EscapeTomlBasicString(format)))
+    {
+        return false;
+    }
+    g_date_format_secondary = format;
+    return true;
+}
+
+const std::string &GetConfiguredTimeFormatPrimary()
+{
+    return g_time_format_primary;
+}
+
+bool SetConfiguredTimeFormatPrimary(const std::string &format)
+{
+    if (!DateTimeFormatIsKnown(metasequoia::local_modes::DateTimeKind::Time, format))
+    {
+        return false;
+    }
+    if (!WriteConfiguredValue("utility", "time_format_primary", EscapeTomlBasicString(format)))
+    {
+        return false;
+    }
+    g_time_format_primary = format;
+    return true;
+}
+
+const std::string &GetConfiguredTimeFormatSecondary()
+{
+    return g_time_format_secondary;
+}
+
+bool SetConfiguredTimeFormatSecondary(const std::string &format)
+{
+    if (!DateTimeFormatIsKnown(metasequoia::local_modes::DateTimeKind::Time, format))
+    {
+        return false;
+    }
+    if (!WriteConfiguredValue("utility", "time_format_secondary", EscapeTomlBasicString(format)))
+    {
+        return false;
+    }
+    g_time_format_secondary = format;
     return true;
 }
 
